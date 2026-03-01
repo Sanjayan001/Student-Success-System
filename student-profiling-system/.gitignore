@@ -1,0 +1,10 @@
+__pycache__/
+.venv/
+.env
+.DS_Store
+*.pkl
+*.log
+data/semester_uploads/*.csv
+data/raw/*.csv
+venv/
+*.pyc
