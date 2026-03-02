@@ -7,7 +7,7 @@ import os
 
 # 1. Load the data
 print("Loading cleaned_data.csv...")
-df = pd.read_csv("C:\\Users\\anman\\Desktop\\student-profiling-system\\data\\interim\\cleaned_data.csv")
+df = pd.read_csv("C:\\Users\\anman\\Desktop\\final project\\Student-Success-System\\student-profiling-system\\data\\interim\\cleaned_data.csv")
 
 # 2. Automatically select all numeric behavioral features
 features = df.select_dtypes(include=[np.number]).columns.tolist()
