@@ -3,31 +3,35 @@ import pandas as pd
 import joblib
 import os
 import numpy as np
-from database.app_db import save_prediction
+from database.app_db import DB_PATH, save_prediction
+from datetime import datetime
 
 # --- ASSET PATHS ---
 MODEL_DIR = "models"
-MODEL_FILE = os.path.join(MODEL_DIR, 'final_ensemble_model.pkl')
-SELECTOR_FILE = os.path.join(MODEL_DIR, 'feature_selector.pkl')
-SCALER_FILE = os.path.join(MODEL_DIR, 'main_scaler.pkl')
+PACKAGE_FILE = os.path.join(MODEL_DIR, 'student_dropout_model_1.pkl')
 
 def run_risk_module():
     st.markdown("## 🎓 Student Risk Intelligence Diagnostic")
+    st.caption("Precision Behavioral Analytics | Unified Stable-Engine v4.0")
     
-    if not os.path.exists(MODEL_FILE):
-        st.error("AI Model files missing. Please ensure /models/ contains your trained pkl files.")
+    if not os.path.exists(PACKAGE_FILE):
+        st.error(f"📦 Model Package Missing: Expected {PACKAGE_FILE} in /models/")
+        st.info("Please ensure you have saved your model using the 'Model 1 Package' code.")
         return
 
-    # Load Research Brain
-    model = joblib.load(MODEL_FILE)
-    selector = joblib.load(SELECTOR_FILE)
-    scaler = joblib.load(SCALER_FILE)
-    ALL_EXPECTED_FEATURES = scaler.feature_names_in_
+    # --- THE UNIFIED LOAD ---
+    package = joblib.load(PACKAGE_FILE)
+    model = package['ensemble']
+    scaler = package['scaler']
+    ALL_EXPECTED_FEATURES = package['feature_names']
+    DEFAULT_THRESHOLD = package.get('threshold', 0.5)
 
-    # --- FORM PERSISTENCE LOGIC (Prevents data clearing) ---
+    # --- FORM PERSISTENCE LOGIC ---
     if 'form_data' not in st.session_state:
         st.session_state.form_data = {}
 
+
+    # --- MAIN UI FORM ---
     with st.form("comprehensive_diagnostic_form"):
         tab1, tab2, tab3, tab4 = st.tabs(["👤 Profile", "📚 Academics", "📉 Phase Trends", "⚠️ Challenges"])
 
@@ -37,7 +41,7 @@ def run_risk_module():
             with c1:
                 student_id = st.text_input("Student ID*", value=st.session_state.form_data.get('student_id', "STU-001"))
                 age = st.number_input("Age", 17, 60, st.session_state.form_data.get('age', 21))
-                gender = st.selectbox("Gender", ["Female", "Male"], index=0 if st.session_state.form_data.get('gender') == "Female" else 1)
+                gender = st.selectbox("Gender", ["Female", "Male"])
                 faculty = st.selectbox("Faculty", ["Computing", "Engineering", "Business", "Humanities & Sciences", "Architecture", "Law", "Hospitality & Culinary"])
             with c2:
                 living = st.selectbox("Living Arrangement", ["With family", "Hostel", "Shared apartment", "Alone"])
@@ -83,7 +87,6 @@ def run_risk_module():
 
         with tab4:
             st.subheader("Retention Challenges")
-            st.write("Identify current barriers:")
             ch_list = {
                 'mental stress / burnout': st.checkbox("Mental stress / burnout"),
                 'lack of proper academic guidance': st.checkbox("Lack of proper academic guidance"),
@@ -99,24 +102,55 @@ def run_risk_module():
         submit = st.form_submit_button("🚀 Run AI Risk Diagnostic")
 
     if submit:
-        # Save current state to prevent clearing
-        st.session_state.form_data = {'student_id': student_id, 'age': age, 'cgpa': cgpa, 'attendance': attendance, 'family_support': family_support}
-
         # --- 1. DATA PREPARATION ---
         data = pd.DataFrame(0.0, index=[0], columns=ALL_EXPECTED_FEATURES)
-        data['Age'] = float(age); data['CGPA'] = float(cgpa); data['Attendance_Percentage'] = float(attendance)
+        
+        # Numeric Direct Mappings
+        data['Age'] = float(age)
+        data['CGPA'] = float(cgpa)
+        data['Attendance_Percentage'] = float(attendance)
         data['Failed_Subjects'] = 5.0 if failed_subs == "5 or more" else float(failed_subs)
-        data['Lecture_Participation'] = float(lecture_part); data['Lab_Participation'] = float(lab_part)
+        data['Lecture_Participation'] = float(lecture_part)
+        data['Lab_Participation'] = float(lab_part)
         data['Family_Support'] = float(family_support)
         data['Gender'] = 1.0 if gender == "Female" else 0.0
         data['Part_Time_Job'] = 1.0 if part_time == "Yes" else 0.0
         data['Considered_Dropout'] = 1.0 if dropout_cons == "Yes" else 0.0
 
-        sem_map = {'1st Semester': 1, '2nd Semester': 2, '3rd Semester': 3, '4th Semester': 4, '5th Semester': 5, '6th Semester': 6, '7th Semester': 7, '8th Semester': 8}
+        # --- THE MISSING MAPPINGS ---
+        
+        # Semester
+        sem_map = {'1st Semester': 1, '2nd Semester': 2, '3rd Semester': 3, '4th Semester': 4, 
+                   '5th Semester': 5, '6th Semester': 6, '7th Semester': 7, '8th Semester': 8}
         data['Semester'] = float(sem_map.get(semester, 0))
 
+        # Travel Time
+        travel_map = {"0-15 minutes": 0, "16-30 minutes": 1, "31-60 minutes": 2, "61-90 minutes": 3, "More than 90 minutes": 4}
+        if 'Travel_Time' in data.columns:
+            data['Travel_Time'] = float(travel_map.get(travel, 0))
+
+        # Study Hours
+        study_map = {"0-5 hours": 0, "6-10 hours": 1, "11-15 hours": 2, "16-20 hours": 3, "More than 20 hours": 4}
+        if 'Study_Hours' in data.columns:
+            data['Study_Hours'] = float(study_map.get(study_hours, 0))
+
+        # Assignment Submission
+        assign_map = {"0-25%": 0, "26-50%": 1, "51-75%": 2, "76-100%": 3}
+        if 'Assignment_Submission' in data.columns:
+            data['Assignment_Submission'] = float(assign_map.get(assignments, 0))
+
+        # Academic Guidance
+        guidance_map = {"Not at all": 0, "Rarely": 1, "Yes, occasionally": 2, "Yes, frequently": 3}
+        if 'Academic_Guidance' in data.columns:
+            data['Academic_Guidance'] = float(guidance_map.get(academic_guidance, 0))
+
+        # --- END OF NEW MAPPINGS ---
+
+        # Handle Dynamic Faculty & Living Columns
         if f"Faculty_{faculty}" in data.columns: data[f"Faculty_{faculty}"] = 1.0
         if f"Living_{living}" in data.columns: data[f"Living_{living}"] = 1.0
+        
+        # Handle Challenges Checkboxes
         for ch_name, checked in ch_list.items():
             col = f"Challenge_{ch_name}"
             if col in data.columns: data[col] = 1.0 if checked else 0.0
@@ -133,20 +167,25 @@ def run_risk_module():
             data[f'{m}_Acceleration'] = float((p_vals[3] - p_vals[2]) - (p_vals[1] - p_vals[0]))
 
         # --- 3. PREDICTION ---
-        data_scaled = pd.DataFrame(scaler.transform(data), columns=ALL_EXPECTED_FEATURES)
-        data_reduced = pd.DataFrame(selector.transform(data_scaled), columns=selector.get_feature_names_out())
-        prob = model.predict_proba(data_reduced)[:, 1][0]
-        status = "High Risk" if prob >= 0.2392 else "Low Risk"
+        # 1. Scale the data (this returns a NumPy array, which causes the warning)
+        X_scaled_array = scaler.transform(data)
+        
+        # 2. Convert it BACK to a DataFrame so the model sees the feature names
+        X_scaled_df = pd.DataFrame(X_scaled_array, columns=ALL_EXPECTED_FEATURES)
+        
+        # 3. Predict using the DataFrame instead of the array
+        prob = model.predict_proba(X_scaled_df)[:, 1][0]
+        status = "High Risk" if prob >= DEFAULT_THRESHOLD else "Low Risk"
 
-        # --- SESSION HANDOVER (FIXED Key: risk_score) ---
+        # --- SESSION HANDOVER ---
         st.session_state['last_student_id'] = student_id
         st.session_state['last_run_data'] = {
             'status': status,
-            'risk_score': prob, # Matches AI Counselor key
+            'risk_score': prob,
             'details': data.to_dict('records')[0]
         }
 
-        # --- 4. MAIN ASSESSMENT HEADER ---
+        # --- 4. VISUAL ASSESSMENT ---
         st.divider()
         res_col1, res_col2 = st.columns([1, 1])
         with res_col1:
@@ -157,372 +196,305 @@ def run_risk_module():
             st.metric("Risk Probability", f"{prob:.4f}")
         
         with res_col2:
-            st.write("📊 **AI Model Confidence**")
+            st.write("📊 **Neural Decision Confidence**")
             st.progress(min(float(prob), 1.0))
 
-        # --- 5. DEEP XAI REPORT ---
+        # --- 5. EXPLAINABLE AI REPORT ---
+        # --- 5. ENHANCED HUMAN-CENTRIC XAI REPORT ---
         st.write("---")
-        st.subheader("🔍 AI Decision Intelligence Report")
+        st.header("🔍 Intelligence Strategy Report")
+        
+        # Ensure current values are accessible
+        cv = data.iloc[0] 
+
+        # A. THE EXECUTIVE SUMMARY (High-Fidelity Banner)
+        risk_color = "#FF4B4B" if status == "High Risk" else "#28A745"
+        risk_bg = "#FF4B4B15" if status == "High Risk" else "#28A74515"
         
         st.markdown(f"""
-            <div style="background-color: {'#ff4b4b11' if status == 'High Risk' else '#28a74511'}; 
-                        padding: 20px; border-radius: 10px; border-left: 5px solid {'#ff4b4b' if status == 'High Risk' else '#28a745'};">
-                <h4 style="margin:0; color: {'#ff4b4b' if status == 'High Risk' else '#28a745'};">Diagnostic Profile: {status}</h4>
-                <p style="margin:10px 0 0 0; font-size: 0.95rem; color: #555; line-height: 1.5;">
-                    The AI Ensemble has cross-referenced this student's unique 4-phase trajectory against historical data. 
+            <div style="background-color: {risk_bg}; padding: 30px; border-radius: 20px; border: 1px solid {risk_color};">
+                <h2 style="margin:0; color: {risk_color}; font-size: 28px;">{status} Profile Detected</h2>
+                <p style="margin:10px 0 0 0; font-size: 18px; color: #1D1D1F; line-height: 1.6;">
+                    The AI Ensemble has analyzed <b>{len(ALL_EXPECTED_FEATURES)} behavioral markers</b>. 
+                    {'<b>CRITICAL:</b> This student is showing patterns highly consistent with historical dropout cases. Immediate intervention is advised.' if status == 'High Risk' else '<b>STABLE:</b> The student is currently maintaining a path toward successful completion. Protective factors are strong.'}
                 </p>
             </div>
         """, unsafe_allow_html=True)
 
-        st.write("") 
+        st.write("")
 
-        cv = data.iloc[0]
-        top_features = selector.get_feature_names_out()
-        xai_col1, xai_col2 = st.columns(2)
-
-        with xai_col1:
-            st.markdown("#### 📉 Behavioral Dynamics & Trajectories")
-            vol = cv.get('Motivation_Volatility', 0)
-            if vol > 1.0:
-                st.warning("**Unstable Engagement Analysis**")
-                st.write(f"**Score:** `{vol:.2f}` | High volatility indicates reactive study drive.")
+        # B. THE "CORE FOUR" DEEP DIAGNOSTIC
+        # Each section now explains the "Why" and the "Human Story"
+        
+        # 1. PSYCHOLOGICAL MOMENTUM
+        with st.container():
+            st.subheader("🧠 Behavioral Momentum: The Engine of Self-Belief")
+            conf_acc = cv.get('Confidence_Acceleration', 0)
+            
+            if conf_acc < -0.1:
+                st.error(f"**Current Trend: Downward Spiral ({conf_acc:.2f})**")
+                st.write("""
+                    **In Simple Terms:** This is the student's 'mental speedometer.' Right now, their confidence is crashing. 
+                    As the subjects get harder, the student feels *less* capable, not more. This 'Internal Defeat' 
+                    is the #1 reason students stop trying before they actually fail.
+                """)
+            elif conf_acc > 0.1:
+                st.success(f"**Current Trend: Growth Mindset (+{conf_acc:.2f})**")
+                st.write("""
+                    **In Simple Terms:** The student is 'learning how to learn.' Even if the work is hard, 
+                    their self-belief is growing faster than the difficulty. This is a massive shield against stress.
+                """)
             else:
-                st.success("**Stable Engagement Strategy**")
-                st.write(f"**Score:** `{vol:.2f}` | Consistent drive matches the resilient profile.")
+                st.info("**Current Trend: Steady Plateau**")
+                st.write("""
+                    **In Simple Terms:** The student is 'coasting.' They aren't gaining confidence, but they aren't losing it. 
+                    While stable, they are at risk of 'stagnation' if the final exams become significantly harder than current work.
+                """)
 
-            acc = cv.get('Confidence_Acceleration', 0)
-            if acc < -0.5:
-                st.error("**Negative Confidence Acceleration**")
-                st.write(f"**Rate:** `{acc:.2f}` | Critical 'Confidence Spiral' detected.")
-            elif acc > 0.5:
-                st.success("**Positive Momentum Detected**")
-                st.write(f"**Rate:** `+{acc:.2f}` | Accelerating mastery trajectory.")
+        
+
+        # 2. BIOLOGICAL SUSTAINABILITY
+        with st.container():
+            st.subheader("🛌 Biological Sustainability: The Battery Life")
+            sleep_slp = cv.get('Sleep_Hours_Slope', 0)
+            
+            if sleep_slp < -0.1:
+                st.error(f"**Current Trend: Energy Depletion ({sleep_slp:.2f})**")
+                st.write("""
+                    **In Simple Terms:** This is the student's foundation. They are 'trading sleep for study time.' 
+                    The brain cannot move information into long-term memory without rest. This trend predicts 
+                    a total cognitive burnout within 2-3 weeks.
+                """)
             else:
-                st.info("**Stable Self-Assurance Baseline**")
+                st.success("**Current Trend: Healthy Rest Cycle**")
+                st.write("""
+                    **In Simple Terms:** The student is protecting their brain. By keeping sleep stable, 
+                    they ensure their focus and memory remain sharp. This is the most underrated 'success' factor.
+                """)
 
-        with xai_col2:
-            st.markdown("#### 📚 Academic & Lifestyle Metrics")
+        # 3. ENGAGEMENT STABILITY
+        with st.container():
+            st.subheader("📈 Engagement Stability: The Rhythm of Work")
+            mot_vol = cv.get('Motivation_Volatility', 0)
+            
+            if mot_vol > 1.2:
+                st.warning(f"**Current Trend: Reactive 'Panic' Study ({mot_vol:.2f})**")
+                st.write("""
+                    **In Simple Terms:** The student only works when they are terrified of a deadline. 
+                    This 'Cramming' cycle creates massive spikes of stress followed by total exhaustion. 
+                    It is a very fragile way to study.
+                """)
+            else:
+                st.success("**Current Trend: Proactive Discipline**")
+                st.write("""
+                    **In Simple Terms:** The student treats university like a marathon, not a sprint. 
+                    They have a steady, predictable daily routine. This consistency is the strongest 
+                    mathematical predictor of passing.
+                """)
+
+        
+
+        # 4. INSTITUTIONAL ANCHORS
+        with st.container():
+            st.subheader("⚓ Institutional Anchors: The Safety Net")
             att = cv.get('Attendance_Percentage', 0)
+            
             if att < 7:
-                st.warning("**Sub-optimal Participation**")
-                st.write(f"**Presence:** `{att}/10` | Falling below classroom integration threshold.")
+                st.error(f"**Current Status: Loose Tethering ({att}/10)**")
+                st.write("""
+                    **In Simple Terms:** This is about 'Belonging.' Every lecture missed is a cut in the rope 
+                    connecting the student to the university. When a student stops showing up, they have 
+                    usually already 'dropped out' mentally.
+                """)
             else:
-                st.success("**High-Presence Anchor**")
-                st.write(f"**Presence:** `{att}/10` | Participation levels within the safe cluster.")
+                st.success(f"**Current Status: Strong Tethering ({att}/10)**")
+                st.write("""
+                    **In Simple Terms:** The student is physically and socially present. Being 'in the room' 
+                    means they receive help, feedback, and peer support automatically. They are anchored 
+                    securely to the campus community.
+                """)
 
-            slp = cv.get('Sleep_Hours_Slope', 0)
-            if slp < -0.2:
-                st.error("**Sleep Depletion Trajectory**")
-                st.write(f"**Trend:** `Negative Slope` | Strong correlation with biological exhaustion.")
-            else:
-                st.success("**Sustainable Biological Load**")
+        # C. THE "WHAT-IF" INTERVENTION (Actionable Prescription)
+        st.write("---")
+        st.subheader("🎯 Recommended Success Strategy")
+        
+        if status == "High Risk":
+            st.info("💡 **Prescription for Immediate Improvement:**")
+            st.markdown(f"""
+                1. **Break the Spiral:** Assign one 'Micro-Task' (15 mins) that they can definitely finish. Success breeds confidence.
+                2. **Sleep Audit:** Force a schedule change. No academic gains are possible while the 'Battery' is at 5%.
+                3. **Human Connection:** A face-to-face meeting is required. Digital alerts are not enough for a 'Loose Tethered' student.
+            """)
+        else:
+            st.success("💡 **Prescription for Sustaining Success:**")
+            st.markdown(f"""
+                1. **Acknowledge the Discipline:** Explicitly praise their routine. Positive reinforcement of 'Proactive Discipline' prevents future plateaus.
+                2. **Check the Biological Load:** Ask: "You're doing great, but are you getting enough rest?" to prevent a sudden shift in sleep slope.
+            """)
 
-        # --- TECHNICAL ARCHITECTURE ---
-        with st.expander("🛠️ View Committee Decision Matrix"):
-            table_df = pd.DataFrame({
-                "Diagnostic Feature": [n.replace("_", " ").title() for n in top_features],
-                "Current Value": [f"{cv[n]:.2f}" for n in top_features]
+        # D. TECHNICAL WEIGHTS (For Researchers)
+        with st.expander("🛠️ View Decision Logic (Neural Weights)"):
+            importance_df = pd.DataFrame({
+                "Intelligence Signal": [n.replace("_", " ").title() for n in ALL_EXPECTED_FEATURES[:15]],
+                "Normalized Value": [f"{v:.4f}" for v in X_scaled_df.values[0][:15]]
             })
-            st.table(table_df)
+            st.table(importance_df)
 
         save_prediction(student_id, float(prob), status, data.to_dict('records')[0])
 
+    # --- 6. THE "DECISION LABORATORY" (Advanced Simulation Suite) ---
+    # PLACED OUTSIDE "IF SUBMIT" TO ALLOW REAL-TIME INTERACTION
+    if 'last_run_data' in st.session_state:
+        st.write("---")
+        st.header("🧪 Prescriptive Simulation Laboratory")
+        st.info("Engineer a recovery strategy below to see real-time risk reduction.")
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# import streamlit as st
-# import pandas as pd
-# import joblib
-# import os
-# import numpy as np
-# from database.app_db import save_prediction
-
-# # --- ASSET PATHS ---
-# MODEL_DIR = "models"
-# MODEL_FILE = os.path.join(MODEL_DIR, 'final_ensemble_model.pkl')
-# SELECTOR_FILE = os.path.join(MODEL_DIR, 'feature_selector.pkl')
-# SCALER_FILE = os.path.join(MODEL_DIR, 'main_scaler.pkl')
-
-# def run_risk_module():
-#     st.markdown("## 🎓 Student Risk Intelligence Diagnostic")
-    
-#     if not os.path.exists(MODEL_FILE):
-#         st.error("AI Model files missing. Please ensure /models/ contains your trained pkl files.")
-#         return
-
-#     # Load Research Brain
-#     model = joblib.load(MODEL_FILE)
-#     selector = joblib.load(SELECTOR_FILE)
-#     scaler = joblib.load(SCALER_FILE)
-#     ALL_EXPECTED_FEATURES = scaler.feature_names_in_
-
-#     with st.form("comprehensive_diagnostic_form"):
-#         tab1, tab2, tab3, tab4 = st.tabs(["👤 Profile", "📚 Academics", "📉 Phase Trends", "⚠️ Challenges"])
-
-#         with tab1:
-#             st.subheader("Demographics & Lifestyle")
-#             c1, c2 = st.columns(2)
-#             with c1:
-#                 student_id = st.text_input("Student ID*", value="STU-001")
-#                 age = st.number_input("Age", 17, 60, 21)
-#                 gender = st.selectbox("Gender", ["Female", "Male"])
-#                 faculty = st.selectbox("Faculty", ["Computing", "Engineering", "Business", "Humanities & Sciences", "Architecture", "Law", "Hospitality & Culinary"])
-#             with c2:
-#                 living = st.selectbox("Living Arrangement", ["With family", "Hostel", "Shared apartment", "Alone"])
-#                 part_time = st.selectbox("Part-time Job", ["No", "Yes"])
-#                 travel = st.selectbox("Daily Travel Time", ["0-15 minutes", "16-30 minutes", "31-60 minutes", "61-90 minutes", "More than 90 minutes"])
-#                 family_support = st.select_slider("Family Support Level", options=[1, 2, 3, 4, 5], value=3)
-
-#         with tab2:
-#             st.subheader("Academic Engagement")
-#             c1, c2 = st.columns(2)
-#             with c1:
-#                 cgpa = st.number_input("Current CGPA", 0.0, 4.0, 3.0)
-#                 semester = st.selectbox("Semester", ["1st Semester", "2nd Semester", "3rd Semester", "4th Semester", "5th Semester", "6th Semester", "7th Semester", "8th Semester"])
-#                 failed_subs = st.selectbox("Failed Subjects", ["0", "1", "2", "3", "4", "5 or more"])
-#                 attendance = st.slider("Average Attendance (0-10 scale)", 0, 10, 8)
-#             with c2:
-#                 study_hours = st.selectbox("Weekly Study Hours", ["0-5 hours", "6-10 hours", "11-15 hours", "16-20 hours", "More than 20 hours"])
-#                 assignments = st.selectbox("Assignments Submitted on Time", ["0-25%", "26-50%", "51-75%", "76-100%"])
-#                 lecture_part = st.slider("Lecture Participation", 1, 5, 3)
-#                 lab_part = st.slider("Lab Participation", 1, 5, 3)
-#                 academic_guidance = st.selectbox("Received Guidance?", ["Not at all", "Rarely", "Yes, occasionally", "Yes, frequently"])
-
-#         with tab3:
-#             st.subheader("Longitudinal Trends (Phase 1-4)")
-#             p_cols = st.columns(4)
-#             phase_inputs = {}
-#             sleep_map = {"0-3 hours": 0, "4-5 hours": 1, "6-7 hours": 2, "8-9 hours": 3, "More than 9 hours": 4}
-#             relax_map = {"0-2 hours": 0, "3-5 hours": 1, "6-8 hours": 2, "9-12 hours": 3, "More than 12 hours": 4}
-
-#             for i, p_col in enumerate(p_cols, 1):
-#                 suffix = f"Phase{i}"
-#                 with p_col:
-#                     st.markdown(f"**Phase {i}**")
-#                     phase_inputs[f"Motivation_{suffix}"] = st.slider(f"Motivation P{i}", 1, 5, 3, key=f"mot{i}")
-#                     phase_inputs[f"Stress_{suffix}"] = st.slider(f"Stress P{i}", 1, 5, 3, key=f"str{i}")
-#                     phase_inputs[f"Confidence_{suffix}"] = st.slider(f"Confidence P{i}", 1, 5, 3, key=f"con{i}")
-#                     phase_inputs[f"Workload_{suffix}"] = st.slider(f"Workload P{i}", 1, 5, 3, key=f"wrk{i}")
-#                     phase_inputs[f"Social_{suffix}"] = st.slider(f"Social P{i}", 1, 5, 3, key=f"soc{i}")
-#                     sl_raw = st.selectbox(f"Sleep P{i}", list(sleep_map.keys()), index=2, key=f"sl{i}")
-#                     re_raw = st.selectbox(f"Relax P{i}", list(relax_map.keys()), index=1, key=f"re{i}")
-#                     phase_inputs[f"Sleep_Hours_{suffix}"] = sleep_map[sl_raw]
-#                     phase_inputs[f"Relaxation_{suffix}"] = relax_map[re_raw]
-
-#         with tab4:
-#             st.subheader("Retention Challenges")
-#             st.write("Identify current barriers:")
-#             ch_list = {
-#                 'mental stress / burnout': st.checkbox("Mental stress / burnout"),
-#                 'lack of proper academic guidance': st.checkbox("Lack of proper academic guidance"),
-#                 'lack of study resources': st.checkbox("Lack of study resources"),
-#                 'difficulty understanding lectures': st.checkbox("Difficulty understanding lectures"),
-#                 'poor time management': st.checkbox("Poor time management"),
-#                 'financial problems': st.checkbox("Financial problems"),
-#                 'personal/family issues': st.checkbox("Personal/family issues"),
-#                 'difficulty choosing subjects': st.checkbox("Difficulty choosing subjects")
-#             }
-#             dropout_cons = st.radio("Considered dropping out?", ["No", "Yes"])
-
-#         submit = st.form_submit_button("🚀 Run AI Risk Diagnostic")
-
-#     if submit:
-#         # --- 1. DATA PREPARATION ---
-#         data = pd.DataFrame(0.0, index=[0], columns=ALL_EXPECTED_FEATURES)
-#         data['Age'] = float(age); data['CGPA'] = float(cgpa); data['Attendance_Percentage'] = float(attendance)
-#         data['Failed_Subjects'] = 5.0 if failed_subs == "5 or more" else float(failed_subs)
-#         data['Lecture_Participation'] = float(lecture_part); data['Lab_Participation'] = float(lab_part)
-#         data['Family_Support'] = float(family_support)
-#         data['Gender'] = 1.0 if gender == "Female" else 0.0
-#         data['Part_Time_Job'] = 1.0 if part_time == "Yes" else 0.0
-#         data['Considered_Dropout'] = 1.0 if dropout_cons == "Yes" else 0.0
-
-#         sem_map = {'1st Semester': 1, '2nd Semester': 2, '3rd Semester': 3, '4th Semester': 4, '5th Semester': 5, '6th Semester': 6, '7th Semester': 7, '8th Semester': 8}
-#         data['Semester'] = float(sem_map.get(semester, 0))
-
-#         if f"Faculty_{faculty}" in data.columns: data[f"Faculty_{faculty}"] = 1.0
-#         if f"Living_{living}" in data.columns: data[f"Living_{living}"] = 1.0
-#         for ch_name, checked in ch_list.items():
-#             col = f"Challenge_{ch_name}"
-#             if col in data.columns: data[col] = 1.0 if checked else 0.0
-
-#         # --- 2. TRAJECTORY ENGINE ---
-#         metrics = ['Motivation', 'Stress', 'Confidence', 'Social', 'Workload', 'Sleep_Hours', 'Relaxation']
-#         x_points = np.array([1, 2, 3, 4])
-#         for m in metrics:
-#             p_vals = [float(phase_inputs[f"{m}_Phase{p}"]) for p in range(1, 5)]
-#             if f'{m}_Phase1' in data.columns: data[f'{m}_Phase1'] = p_vals[0]
-#             if f'{m}_Phase4' in data.columns: data[f'{m}_Phase4'] = p_vals[3]
-#             data[f'{m}_Volatility'] = float(np.std(p_vals))
-#             data[f'{m}_Slope'] = float(np.polyfit(x_points, p_vals, 1)[0])
-#             data[f'{m}_Acceleration'] = float((p_vals[3] - p_vals[2]) - (p_vals[1] - p_vals[0]))
-
-#         # --- 3. PREDICTION ---
-#         data_scaled = pd.DataFrame(scaler.transform(data), columns=ALL_EXPECTED_FEATURES)
-#         data_reduced = pd.DataFrame(selector.transform(data_scaled), columns=selector.get_feature_names_out())
-#         prob = model.predict_proba(data_reduced)[:, 1][0]
-#         status = "High Risk" if prob >= 0.2392 else "Low Risk"
-
-#         # --- 4. MAIN ASSESSMENT HEADER ---
-#         st.divider()
-#         res_col1, res_col2 = st.columns([1, 1])
-#         with res_col1:
-#             if status == "High Risk":
-#                 st.error(f"### Assessment: {status}")
-#             else:
-#                 st.success(f"### Assessment: {status}")
-#             st.metric("Risk Probability", f"{prob:.4f}")
-        
-#         with res_col2:
-#             st.write("📊 **AI Model Confidence**")
-#             st.progress(min(float(prob), 1.0))
-#             st.caption("Target Threshold: 0.2392 (F2-Optimized)")
-
-#         # --- 5. ENHANCED AI DECISION INTELLIGENCE REPORT ---
-#         st.write("---")
-#         st.subheader("🔍 AI Decision Intelligence Report")
-        
-#         # summary banner
-#         st.markdown(f"""
-#             <div style="background-color: {'#ff4b4b11' if status == 'High Risk' else '#28a74511'}; 
-#                         padding: 20px; border-radius: 10px; border-left: 5px solid {'#ff4b4b' if status == 'High Risk' else '#28a745'};">
-#                 <h4 style="margin:0; color: {'#ff4b4b' if status == 'High Risk' else '#28a745'};">Diagnostic Profile: {status}</h4>
-#                 <p style="margin:10px 0 0 0; font-size: 0.95rem; color: #555; line-height: 1.5;">
-#                     The AI Ensemble has cross-referenced this student's unique 4-phase trajectory against historical data. 
-#                     This prediction is primarily driven by how the student's internal behavior (Motivation/Confidence) 
-#                     interacts with external academic pressures.
-#                 </p>
-#             </div>
-#         """, unsafe_allow_html=True)
-
-#         st.write("") 
-
-#         cv = data.iloc[0]
-#         top_features = selector.get_feature_names_out()
-#         xai_col1, xai_col2 = st.columns(2)
-
-#         with xai_col1:
-#             st.markdown("#### 📉 Behavioral Dynamics & Trajectories")
+        with st.expander("🚀 OPEN SIMULATION THEATER", expanded=False):
+            st.markdown("### 🕹️ Strategy Configuration")
             
-#             # --- MOTIVATION VOLATILITY ---
-#             vol = cv.get('Motivation_Volatility', 0)
-#             if vol > 1.0:
-#                 st.warning(f"**Unstable Engagement Analysis**")
-#                 st.write(f"**Volatility Score:** `{vol:.2f}` | **Threshold Alert**")
-#                 st.write("""
-#                     High 'Motivation Volatility' suggests the student's drive is reactive rather than resilient. 
-#                     Drastic swings in engagement across the semester are a signature of students who 
-#                     eventually disengage when workload peaks.
-#                 """)
-#             else:
-#                 st.success(f"**Stable Engagement Strategy**")
-#                 st.write(f"**Volatility Score:** `{vol:.2f}` | **Consistent Profile**")
-#                 st.write("""
-#                     This stability matches the 'Resilient' student profile. Maintaining consistent motivation 
-#                     from the baseline (Phase 1) through to the finals (Phase 4) indicates a strong internal 
-#                     discipline and lower probability of burnout.
-#                 """)
-
-#             # --- CONFIDENCE ACCELERATION ---
-#             acc = cv.get('Confidence_Acceleration', 0)
-#             if acc < -0.5:
-#                 st.error(f"**Negative Confidence Acceleration**")
-#                 st.write(f"**Rate:** `{acc:.2f}` | **Critical Spiral**")
-#                 st.write("""
-#                     The model detected a 'Confidence Spiral'. This means self-belief is not just declining, 
-#                     but the *rate* of decline is speeding up as the semester ends. This mathematical pattern 
-#                     is a high-impact early warning for silent dropout decisions.
-#                 """)
-#             elif acc > 0.5:
-#                 st.success(f"**Positive Momentum Detected**")
-#                 st.write(f"**Rate:** `+{acc:.2f}` | **Growth Phase**")
-#                 st.write("""
-#                     The student is in a 'Growth Trajectory'. Accelerating confidence suggests a mastery of 
-#                     course materials and positive social integration, which acts as a powerful buffer 
-#                     against academic risk.
-#                 """)
-#             else:
-#                 st.info(f"**Stable Self-Assurance Baseline**")
-#                 st.write(f"**Rate:** `{acc:.2f}` | **Plateau**")
-#                 st.write("""
-#                     Confidence levels are holding steady. While we don't see accelerating growth, the 
-#                     absence of a downward spiral suggests the student currently possesses the emotional 
-#                     stamina required for the remaining semester phases.
-#                 """)
-
-#         with xai_col2:
-#             st.markdown("#### 📚 Academic & Lifestyle Metrics")
+            # Load original baseline from the Last Successful Run
+            original_details = st.session_state['last_run_data']['details'].copy()
+            actual_prob = st.session_state['last_run_data']['risk_score']
             
-#             # --- ATTENDANCE ---
-#             att = cv.get('Attendance_Percentage', 0)
-#             if att < 7:
-#                 st.warning(f"**Sub-optimal Participation**")
-#                 st.write(f"**Physical Presence:** `{att}/10` | **Risk Factor**")
-#                 st.write("""
-#                     Attendance is a primary 'Anchor' for success. Scores below 7/10 indicate a breakdown in 
-#                     classroom integration. The AI weights this heavily because missing conceptual lectures 
-#                     in Phase 2 often leads to failure in Phase 4.
-#                 """)
-#             else:
-#                 st.success(f"**High-Presence Anchor**")
-#                 st.write(f"**Physical Presence:** `{att}/10` | **Safe Cluster**")
-#                 st.write("""
-#                     A score of 8 or higher places the student in the 'Safe Participation' cluster. Consistent 
-#                     presence ensures the student receives immediate academic feedback and remains socially 
-#                     tethered to the learning environment.
-#                 """)
-
-#             # --- SLEEP SLOPE ---
-#             slp = cv.get('Sleep_Hours_Slope', 0)
-#             if slp < -0.2:
-#                 st.error(f"**Sleep Depletion Trajectory**")
-#                 st.write(f"**Trend:** `Negative Slope` | **Biological Risk**")
-#                 st.write("""
-#                     We detected 'Linear Exhaustion'. Trading sleep for study hours as the semester progresses 
-#                     creates a negative biological load. Statistically, students with this trajectory show a 
-#                     spike in mental stress scores during the final phase.
-#                 """)
-#             else:
-#                 st.success(f"**Sustainable Biological Load**")
-#                 st.write(f"**Trend:** `Stable/Positive` | **Protected**")
-#                 st.write("""
-#                     The student is maintaining healthy rest patterns despite academic pressure. By preserving 
-#                     sleep quality in the final phases, they maintain the cognitive cognitive functioning 
-#                     necessary for complex problem solving.
-#                 """)
-
-#         # --- TECHNICAL ARCHITECTURE ---
-#         with st.expander("🛠️ View Committee Decision Matrix (Mathematical Weights)"):
-#             st.write("Technical breakdown of the Top 15 variables used by the Voting Ensemble (SVM, KNN, Extra Trees).")
-#             # Image tag for instruction purposes
+            # Layout
+            col_lev1, col_lev2, col_lev3 = st.columns(3)
             
+            with col_lev1:
+                st.markdown("#### 📚 Academic Levers")
+                sim_cgpa = st.slider("Modify CGPA", 0.0, 4.0, float(original_details['CGPA']), 0.05)
+                sim_att = st.slider("Modify Attendance", 0.0, 10.0, float(original_details['Attendance_Percentage']), 0.5)
+                sim_fail = st.select_slider("Subjects Failed", options=[0, 1, 2, 3, 4, 5], value=int(original_details['Failed_Subjects']))
             
-#             table_df = pd.DataFrame({
-#                 "Diagnostic Feature": [n.replace("_", " ").title() for n in top_features],
-#                 "Current Value": [f"{cv[n]:.2f}" for n in top_features]
-#             })
-#             st.table(table_df)
+            with col_lev2:
+                st.markdown("#### 🧠 Behavioral Levers")
+                sim_mot = st.slider("Boost Motivation", 1.0, 5.0, float(original_details['Motivation_Phase4']), 0.1)
+                sim_conf = st.slider("Boost Confidence", 1.0, 5.0, float(original_details['Confidence_Phase4']), 0.1)
+                sim_stress = st.slider("Internal Stress Level", 1.0, 5.0, float(original_details['Stress_Phase4']), 0.1)
 
-#         save_prediction(student_id, float(prob), status, data.to_dict('records')[0])
+            with col_lev3:
+                st.markdown("#### 🛌 Biological Levers")
+                # Handle mapping back to integers for categorical sliders
+                sim_sleep = st.slider("Sleep Hygiene (0-4)", 0, 4, int(original_details.get('Sleep_Hours_Phase4', 2)))
+                sim_relax = st.slider("Relaxation Level (0-4)", 0, 4, int(original_details.get('Relaxation_Phase4', 2)))
+                sim_support = st.slider("Family Support (1-5)", 1, 5, int(original_details['Family_Support']))
+
+            # 1. Update Simulation DataFrame
+            sim_df = pd.DataFrame([original_details])
+            sim_df['CGPA'] = sim_cgpa
+            sim_df['Attendance_Percentage'] = sim_att
+            sim_df['Failed_Subjects'] = float(sim_fail)
+            sim_df['Motivation_Phase4'] = sim_mot
+            sim_df['Confidence_Phase4'] = sim_conf
+            sim_df['Stress_Phase4'] = sim_stress
+            sim_df['Sleep_Hours_Phase4'] = float(sim_sleep)
+            sim_df['Relaxation_Phase4'] = float(sim_relax)
+            sim_df['Family_Support'] = float(sim_support)
+
+            # 2. Re-calculate Probability using Scaler
+            sim_scaled = scaler.transform(sim_df[ALL_EXPECTED_FEATURES])
+            sim_scaled_df = pd.DataFrame(sim_scaled, columns=ALL_EXPECTED_FEATURES)
+            sim_prob = model.predict_proba(sim_scaled_df)[:, 1][0]
+            
+            st.divider()
+
+            # 3. Visual Impact Analysis
+            res_c1, res_c2 = st.columns([1, 2])
+            with res_c1:
+                st.markdown("#### 🔮 Outcome Projection")
+                diff = sim_prob - actual_prob
+                st.metric("Projected Risk", f"{sim_prob:.2%}", delta=f"{diff:+.2%}", delta_color="inverse")
+                
+                if sim_prob < DEFAULT_THRESHOLD:
+                    st.success("✅ INTERVENTION SUCCESS")
+                else:
+                    st.warning("⚠️ INSUFFICIENT IMPACT")
+
+            with res_c2:
+                st.markdown("#### 📊 Sensitivity Impact Matrix")
+                impact_data = pd.DataFrame({
+                    "Category": ["Academic", "Behavioral", "Biological"],
+                    "Gravity": [abs(sim_cgpa - original_details['CGPA']) * 2, 
+                                abs(sim_mot - original_details['Motivation_Phase4']) * 1.5,
+                                abs(sim_sleep - original_details.get('Sleep_Hours_Phase4', 2)) * 1.2]
+                })
+                import plotly.express as px
+                fig_impact = px.bar(impact_data, x="Gravity", y="Category", orientation='h', 
+                                     color="Gravity", color_continuous_scale="Viridis", height=200)
+                fig_impact.update_layout(margin=dict(l=0,r=0,t=0,b=0), showlegend=False)
+                st.plotly_chart(fig_impact, use_container_width=True)
+
+            if st.button("📝 Finalize Intervention Prescription"):
+                # 1. Sync the Path
+                from database.app_db import DB_PATH 
+                
+                try:
+                    import sqlite3
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    
+                    # 2. Calculate the "Benefit" (Risk Reduction)
+                    actual_prob = st.session_state['last_run_data']['risk_score']
+                    risk_reduction = actual_prob - sim_prob
+                    
+                    # 3. THE MASTER MAPPING (All 9 Levers)
+                    cursor.execute("""
+                        INSERT OR REPLACE INTO intervention_goals 
+                        (student_id, target_cgpa, target_attendance, target_failed_subs, 
+                        target_motivation, target_confidence, target_stress, 
+                        target_sleep, target_relaxation, target_support, predicted_risk_reduction)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (
+                        st.session_state['last_student_id'], # ID
+                        float(sim_cgpa),                    # Academic 1
+                        float(sim_att),                     # Academic 2
+                        float(sim_fail),                    # Academic 3
+                        float(sim_mot),                     # Behavioral 1
+                        float(sim_conf),                    # Behavioral 2
+                        float(sim_stress),                  # Behavioral 3
+                        float(sim_sleep),                   # Biological 1
+                        float(sim_relax),                   # Biological 2
+                        float(sim_support),                 # Biological 3
+                        float(risk_reduction)               # The "Success" Metric
+                    ))
+                    
+                    conn.commit()
+                    conn.close()
+                    
+                    # 4. Apple-Grade Feedback
+                    st.balloons()
+                    st.success(f"🎯 Clinical Prescription Finalized for {st.session_state['last_student_id']}")
+
+                    # This expander acts as a "Digital Receipt" for the Counselor
+                    with st.expander("📄 View Finalized Intervention Summary", expanded=True):
+                        st.markdown(f"### Strategy Archive: {st.session_state['last_student_id']}")
+                        st.info("All 9 behavioral and academic levers have been synced to the Research Database.")
+                        
+                        # Using 3 columns for a balanced, high-end dashboard look
+                        meta1, meta2, meta3 = st.columns(3)
+                        
+                        with meta1:
+                            st.metric(label="Target CGPA", value=f"{sim_cgpa:.2f}")
+                            st.metric(label="Sleep Hygiene", value=f"{sim_sleep} / 4")
+                            
+                        with meta2:
+                            st.metric(label="Attendance Goal", value=f"{sim_att:.1f}%")
+                            st.metric(label="Stress Cap", value=f"{sim_stress} / 5")
+                            
+                        with meta3:
+                            # The 'delta' shows the improvement from the original risk
+                            improvement = actual_prob - sim_prob
+                            st.metric(label="Risk Reduction", value=f"{improvement:.2%}", delta="Optimized")
+                            st.metric(label="Motivation Target", value=f"{sim_mot} / 5")
+
+                        st.caption(f"Prescription Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                    
+                except Exception as e:
+                    # Captures any DB locks or path errors gracefully
+                    st.error(f"❌ Synchronization Failure: {e}")
+                    st.warning("Ensure the database is not open in another application (like DB Browser).")
+
+
+
 
 
 
