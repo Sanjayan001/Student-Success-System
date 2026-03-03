@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from google import genai  # Switching to the NEW 2026 SDK
+from google.genai import types
+#import google.generativeai as genai
 import os
 import time
 from datetime import datetime
@@ -12,14 +14,23 @@ def run_ai_counselor():
     st.markdown("# 🤖 Hyper-Personalized AI Counselor")
     st.caption("Strategic Intervention Engine v3.1 | Powered by Gemini 3.0 Flash")
     
-    # --- 1. NEW SDK CONFIGURATION ---
-    # The new client automatically handles API versioning to prevent 404s
-    API_KEY = "AIzaSyDZqVL9fcfnl7vgdsK82ZDsz5bz8RYuEqE" 
+    # --- 1. SECURITY VAULT (API KEY) ---
+    # --- 1. SECURITY VAULT (API KEY & CLIENT) ---
     try:
-        client = genai.Client(api_key=API_KEY)
+        # Check if the client is already alive. If not, build it and save it.
+        if "gemini_client" not in st.session_state:
+            api_key = st.secrets["GEMINI_API_KEY"]
+            st.session_state.gemini_client = genai.Client(api_key=api_key)
+        
+        # Always use the persistent client
+        client = st.session_state.gemini_client
+        
+    except KeyError:
+        st.error("🔒 Security Vault Locked: Could not find 'GEMINI_API_KEY' in your secrets.toml file.")
+        st.stop()
     except Exception as e:
-        st.error(f"Client Gateway Error: {e}")
-        return
+        st.error(f"⚠️ Initialization Error: {e}")
+        st.stop()
 
     # Initialize session state variables
     if "chat_history" not in st.session_state:
@@ -53,13 +64,25 @@ def run_ai_counselor():
         
         st.success(f"⚡ **Live-Sync Active:** Information for {student_id} inherited.")
         
+        # 1. First, we DEFINE the instruction
         system_instruction = f"""
         SYSTEM ROLE: Professional University Counselor.
         STUDENT ID: {student_id} | RISK: {risk_status} ({risk_prob:.4f})
         PROTOCOL: Use clinical empathy. Reference diagnostic trajectories (Sleep/Motivation).
         """
+        
+        # --- INITIALIZE CHAT MEMORY ---
+        if "chat_session" not in st.session_state:
+            st.session_state.chat_session = client.chats.create(
+                model="gemini-3-flash-preview",
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.7,
+                )
+            )
+            
 
-        # Display Chat History
+        # 3. Display Chat History
         for message in st.session_state.chat_history:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
@@ -80,23 +103,19 @@ def run_ai_counselor():
                     )
                     st.session_state.current_mood = "".join(filter(str.isalpha, mood_check.text.strip()))
 
-                    # STEP B: COUNSELING RESPONSE
-                    response = client.models.generate_content(
-                        model="gemini-3-flash-preview",
-                        contents=f"{system_instruction}\n[MOOD: {st.session_state.current_mood}]\nStudent: {prompt}"
-                    )
+                    # STEP B: REAL-TIME STREAMING RESPONSE
+                    contextual_prompt = f"[STUDENT MOOD DETECTED AS: {st.session_state.current_mood}] \n\n {prompt}"
                     
-                    # Professional Typing Animation
-                    full_text = response.text
-                    placeholder = st.empty()
-                    typed_text = ""
-                    for word in full_text.split():
-                        typed_text += word + " "
-                        placeholder.markdown(typed_text + "▌")
-                        time.sleep(0.04)
-                    placeholder.markdown(full_text)
+                    response_stream = st.session_state.chat_session.send_message_stream(contextual_prompt)
                     
-                    st.session_state.chat_history.append({"role": "assistant", "content": full_text})
+                    def generate_chunks():
+                        for chunk in response_stream:
+                            if chunk.text:
+                                yield chunk.text
+                    
+                    # Streamlit handles writing it live natively!
+                    full_response = st.write_stream(generate_chunks())
+                    st.session_state.chat_history.append({"role": "assistant", "content": full_response})
 
                     # STEP C: CLINICAL INTERVENTION DASHBOARD
                     with st.expander("📝 AI Intervention Summary"):

@@ -3,17 +3,17 @@ import pandas as pd
 import numpy as np
 import sqlite3
 import os
-import json
 
 try:
     import plotly.express as px
     import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
     PLOTLY_AVAILABLE = True
 except ImportError:
     PLOTLY_AVAILABLE = False
 
-DB_PATH = os.path.join("database", "student_success.db")
+# --- DYNAMIC PATH RESOLUTION (Root-Aware) ---
+CURRENT_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(CURRENT_MODULE_DIR, "..", "database", "student_success.db")
 
 def run_progress_tracking():
     st.markdown("# 📊 Advanced Student Intelligence Suite")
@@ -21,7 +21,7 @@ def run_progress_tracking():
 
     if 'last_run_data' not in st.session_state:
         st.warning("⚠️ **System Awaiting Input:** Please execute a Diagnostic Scan in the Risk Intelligence module.")
-        return
+        st.stop() # Prevents the rest of the code from crashing
 
     # --- 1. DATA INFRASTRUCTURE ---
     data = st.session_state['last_run_data']['details']
@@ -30,7 +30,6 @@ def run_progress_tracking():
     student_id = st.session_state.get('last_student_id', "STU-001")
 
     # --- 2. THE EXECUTIVE HUD (Heads-Up Display) ---
-    # Apple-style high-contrast metrics
     st.write(f"### 🧬 Diagnostic ID: {student_id}")
     h1, h2, h3, h4 = st.columns(4)
     
@@ -39,7 +38,7 @@ def run_progress_tracking():
     p4_avg = np.mean([data.get(f'{m}_Phase4', 3) for m in ['Motivation', 'Confidence', 'Stress']])
     velocity = p4_avg - p3_avg
 
-    h1.metric("Risk Probability", f"{prob:.1%}", delta=f"{'CRITICAL' if prob > 0.7 else 'ELEVATED' if prob > 0.4 else 'STABLE'}")
+    h1.metric("Risk Probability", f"{prob:.1%}", delta=f"{'CRITICAL' if prob > 0.7 else 'ELEVATED' if prob > 0.4 else 'STABLE'}", delta_color="inverse")
     h2.metric("Momentum Velocity", f"{velocity:+.2f}", delta="Recent Shift", delta_color="normal")
     h3.metric("Engagement Index", f"{data.get('Attendance_Percentage', 0)*10}%")
     h4.metric("Academic Load", f"Sem {int(data.get('Semester', 1))}")
@@ -56,14 +55,16 @@ def run_progress_tracking():
         for p in range(1, 5):
             trend_data.append({"Metric": m, "Phase": p, "Score": data.get(f"{m}_Phase{p}", 3.0)})
     
-    df_trends = pd.DataFrame(trend_data)
-    fig_trends = px.line(df_trends, x="Phase", y="Score", color="Metric", 
-                         line_shape="spline", markers=True, 
-                         template="plotly_dark",
-                         color_discrete_sequence=px.colors.sequential.Agsunset)
-    
-    fig_trends.update_layout(xaxis=dict(tickmode='linear', tick0=1, dtick=1), yaxis_range=[0, 5.5])
-    st.plotly_chart(fig_trends, use_container_width=True)
+    if PLOTLY_AVAILABLE:
+        df_trends = pd.DataFrame(trend_data)
+        fig_trends = px.line(df_trends, x="Phase", y="Score", color="Metric", 
+                             line_shape="spline", markers=True, 
+                             template="plotly_white", # Using white for a cleaner, modern look
+                             color_discrete_sequence=px.colors.sequential.Agsunset)
+        
+        fig_trends.update_layout(xaxis=dict(tickmode='linear', tick0=1, dtick=1), yaxis_range=[0, 5.5])
+        # 2026 Syntax Update: width="stretch"
+        st.plotly_chart(fig_trends, width="stretch")
 
     # --- 4. THE BENTO ANALYTICS GRID (Multidimensional) ---
     st.write("### 🧩 Strategic Risk Clusters")
@@ -72,40 +73,41 @@ def run_progress_tracking():
     with col_left:
         # A. RADAR BALANCE (Baseline vs Current)
         st.markdown("#### ⚖️ Holistic Resilience Balance")
-        fig_radar = go.Figure()
-        fig_radar.add_trace(go.Scatterpolar(
-            r=[data.get(f"{m}_Phase1", 3) for m in metrics],
-            theta=metrics, fill='toself', name='Baseline (P1)', line_color='#636EFA'
-        ))
-        fig_radar.add_trace(go.Scatterpolar(
-            r=[data.get(f"{m}_Phase4", 3) for m in metrics],
-            theta=metrics, fill='toself', name='Current (P4)', line_color='#EF553B'
-        ))
-        fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 5])), showlegend=True, margin=dict(t=20, b=20))
-        st.plotly_chart(fig_radar, use_container_width=True)
+        if PLOTLY_AVAILABLE:
+            fig_radar = go.Figure()
+            fig_radar.add_trace(go.Scatterpolar(
+                r=[data.get(f"{m}_Phase1", 3) for m in metrics] + [data.get(f"{metrics[0]}_Phase1", 3)],
+                theta=metrics + [metrics[0]], fill='toself', name='Baseline (P1)', line_color='#636EFA'
+            ))
+            fig_radar.add_trace(go.Scatterpolar(
+                r=[data.get(f"{m}_Phase4", 3) for m in metrics] + [data.get(f"{metrics[0]}_Phase4", 3)],
+                theta=metrics + [metrics[0]], fill='toself', name='Current (P4)', line_color='#EF553B'
+            ))
+            fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 5])), showlegend=True, margin=dict(t=20, b=20))
+            st.plotly_chart(fig_radar, width="stretch")
 
     with col_right:
         # B. ACADEMIC ANCHOR POINTS (Bar Chart)
         st.markdown("#### ⚓ Academic Strength Anchors")
         anchors = {
-            "GPA Performance": data.get('CGPA', 0) / 4.0 * 5, # Normalize to 5
-            "Attendance": data.get('Attendance_Percentage', 0) / 2, # Normalize to 5
+            "GPA Performance": data.get('CGPA', 0) / 4.0 * 5, 
+            "Attendance": data.get('Attendance_Percentage', 0) / 2, 
             "Lab Participation": data.get('Lab_Participation', 0),
             "Lecture Participation": data.get('Lecture_Participation', 0),
             "Guidance Level": data.get('Academic_Guidance', 0)
         }
-        fig_anchors = px.bar(x=list(anchors.values()), y=list(anchors.keys()), 
-                             orientation='h', color=list(anchors.values()),
-                             color_continuous_scale='RdYlGn', labels={'x':'Strength (0-5)', 'y':''})
-        fig_anchors.update_layout(showlegend=False, margin=dict(t=20, b=20))
-        st.plotly_chart(fig_anchors, use_container_width=True)
+        if PLOTLY_AVAILABLE:
+            fig_anchors = px.bar(x=list(anchors.values()), y=list(anchors.keys()), 
+                                 orientation='h', color=list(anchors.values()),
+                                 color_continuous_scale='RdYlGn', labels={'x':'Strength (0-5)', 'y':''})
+            fig_anchors.update_layout(showlegend=False, margin=dict(t=20, b=20))
+            st.plotly_chart(fig_anchors, width="stretch")
 
     # --- 5. DETAILED FEATURE MATRIX (The "Deep Dive") ---
     st.divider()
     st.subheader("🔍 Full Feature Audit Matrix")
     st.write("Every variable processed by the AI is logged here for clinical audit.")
     
-    # Organize features into logical categories
     categories = {
         "Demographics": ['Age', 'Gender', 'Faculty', 'Living_Arrangement'],
         "Academic Metrics": ['CGPA', 'Semester', 'Failed_Subjects', 'Attendance_Percentage'],
@@ -116,10 +118,8 @@ def run_progress_tracking():
     cat_tabs = st.tabs(list(categories.keys()))
     for i, (cat_name, cat_features) in enumerate(categories.items()):
         with cat_tabs[i]:
-            # Filter the actual data for these features
             cat_data = {k: v for k, v in data.items() if any(f in k for f in cat_features)}
             if cat_data:
-                # Transpose for a professional vertical list
                 df_cat = pd.DataFrame(list(cat_data.items()), columns=['Signal', 'Value'])
                 st.table(df_cat)
             else:
@@ -135,10 +135,11 @@ def run_progress_tracking():
         conn.close()
 
         if not hist_df.empty:
-            st.dataframe(hist_df, use_container_width=True)
-            # Risk over time area chart
-            fig_area = px.area(hist_df, x='prediction_date', y='risk_score', title="Longitudinal Risk Exposure")
-            st.plotly_chart(fig_area, use_container_width=True)
+            # 2026 Syntax Update
+            st.dataframe(hist_df, width="stretch")
+            if PLOTLY_AVAILABLE:
+                fig_area = px.area(hist_df, x='prediction_date', y='risk_score', title="Longitudinal Risk Exposure")
+                st.plotly_chart(fig_area, width="stretch")
         else:
             st.info("No prior history found. This assessment is currently the Baseline.")
     except Exception as e:
@@ -147,7 +148,7 @@ def run_progress_tracking():
     # --- 7. ACTIONABLE INTELLIGENCE FOOTER ---
     st.divider()
     st.subheader("💡 Strategic Intervention Priority")
-    # Custom logic to find the biggest drop
+    
     drops = {}
     for m in metrics:
         drops[m] = data.get(f"{m}_Phase1", 3) - data.get(f"{m}_Phase4", 3)

@@ -6,9 +6,12 @@ import numpy as np
 from database.app_db import DB_PATH, save_prediction
 from datetime import datetime
 
-# --- ASSET PATHS ---
-MODEL_DIR = "models"
-PACKAGE_FILE = os.path.join(MODEL_DIR, 'student_dropout_model_1.pkl')
+# This finds the 'modules' folder where this script lives
+CURRENT_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Go up one level to 'Risk-Prediction' then into 'models' and 'database'
+PACKAGE_FILE = os.path.join(CURRENT_MODULE_DIR, "..", "models", "student_dropout_model_1.pkl")
+DB_FOLDER_PATH = os.path.join(CURRENT_MODULE_DIR, "..", "database")
 
 def run_risk_module():
     st.markdown("## 🎓 Student Risk Intelligence Diagnostic")
@@ -185,26 +188,24 @@ def run_risk_module():
             'details': data.to_dict('records')[0]
         }
 
-        # --- 4. VISUAL ASSESSMENT ---
+        # --- 4. VISUAL ASSESSMENT (High-Impact Header) ---
+        # UPDATED: Added styled HTML headers for the risk profile
         st.divider()
         res_col1, res_col2 = st.columns([1, 1])
         with res_col1:
-            if status == "High Risk":
-                st.error(f"### Assessment: {status}")
-            else:
-                st.success(f"### Assessment: {status}")
+            color = "#FF4B4B" if status == "High Risk" else "#28A745"
+            st.markdown(f"<h2 style='color: {color}; margin-bottom:0;'>{status} Profile Detected</h2>", unsafe_allow_html=True)
             st.metric("Risk Probability", f"{prob:.4f}")
         
         with res_col2:
             st.write("📊 **Neural Decision Confidence**")
             st.progress(min(float(prob), 1.0))
+            st.caption("Confidence score derived from Gradient Boosted Ensemble weights.")
 
-        # --- 5. EXPLAINABLE AI REPORT ---
         # --- 5. ENHANCED HUMAN-CENTRIC XAI REPORT ---
         st.write("---")
         st.header("🔍 Intelligence Strategy Report")
         
-        # Ensure current values are accessible
         cv = data.iloc[0] 
 
         # A. THE EXECUTIVE SUMMARY (High-Fidelity Banner)
@@ -212,8 +213,8 @@ def run_risk_module():
         risk_bg = "#FF4B4B15" if status == "High Risk" else "#28A74515"
         
         st.markdown(f"""
-            <div style="background-color: {risk_bg}; padding: 30px; border-radius: 20px; border: 1px solid {risk_color};">
-                <h2 style="margin:0; color: {risk_color}; font-size: 28px;">{status} Profile Detected</h2>
+            <div style="background-color: {risk_bg}; padding: 30px; border-radius: 20px; border: 1px solid {risk_color}; margin-bottom: 25px;">
+                <h3 style="margin:0; color: {risk_color}; font-size: 24px;">Executive Summary</h3>
                 <p style="margin:10px 0 0 0; font-size: 18px; color: #1D1D1F; line-height: 1.6;">
                     The AI Ensemble has analyzed <b>{len(ALL_EXPECTED_FEATURES)} behavioral markers</b>. 
                     {'<b>CRITICAL:</b> This student is showing patterns highly consistent with historical dropout cases. Immediate intervention is advised.' if status == 'High Risk' else '<b>STABLE:</b> The student is currently maintaining a path toward successful completion. Protective factors are strong.'}
@@ -221,118 +222,56 @@ def run_risk_module():
             </div>
         """, unsafe_allow_html=True)
 
+        # UPDATED: B. THE "CORE FOUR" DEEP DIAGNOSTIC (Now a professional 2x2 Grid)
+        grid_row1_col1, grid_row1_col2 = st.columns(2)
+        grid_row2_col1, grid_row2_col2 = st.columns(2)
+        
+        with grid_row1_col1:
+            with st.container(border=True):
+                st.markdown("#### 🧠 Behavioral Momentum")
+                conf_acc = cv.get('Confidence_Acceleration', 0)
+                if conf_acc < -0.1: st.error(f"Trend: Downward Spiral ({conf_acc:.2f})")
+                elif conf_acc > 0.1: st.success(f"Trend: Growth Mindset (+{conf_acc:.2f})")
+                else: st.info("Trend: Steady Plateau")
+                st.caption("Self-belief relative to increasing task difficulty.")
+
+        with grid_row1_col2:
+            with st.container(border=True):
+                st.markdown("#### 🛌 Biological Battery")
+                sleep_slp = cv.get('Sleep_Hours_Slope', 0)
+                if sleep_slp < -0.1: st.error(f"Trend: Energy Depletion ({sleep_slp:.2f})")
+                else: st.success("Trend: Healthy Rest Cycle")
+                st.caption("Foundation for cognitive retention and memory.")
+
+        with grid_row2_col1:
+            with st.container(border=True):
+                st.markdown("#### 📈 Engagement Rhythm")
+                mot_vol = cv.get('Motivation_Volatility', 0)
+                if mot_vol > 1.2: st.warning(f"Trend: Reactive/Panic Study ({mot_vol:.2f})")
+                else: st.success("Trend: Proactive Discipline")
+                st.caption("Consistency of study habits vs reactive cramming.")
+
+        with grid_row2_col2:
+            with st.container(border=True):
+                st.markdown("#### ⚓ Institutional Anchor")
+                att = cv.get('Attendance_Percentage', 0)
+                if att < 7: st.error(f"Status: Loose Tethering ({att}/10)")
+                else: st.success(f"Status: Strong Tethering ({att}/10)")
+                st.caption("Physical and social connection to the campus.")
+
+        # C. Recommended Strategy (Prescription)
         st.write("")
-
-        # B. THE "CORE FOUR" DEEP DIAGNOSTIC
-        # Each section now explains the "Why" and the "Human Story"
-        
-        # 1. PSYCHOLOGICAL MOMENTUM
-        with st.container():
-            st.subheader("🧠 Behavioral Momentum: The Engine of Self-Belief")
-            conf_acc = cv.get('Confidence_Acceleration', 0)
-            
-            if conf_acc < -0.1:
-                st.error(f"**Current Trend: Downward Spiral ({conf_acc:.2f})**")
-                st.write("""
-                    **In Simple Terms:** This is the student's 'mental speedometer.' Right now, their confidence is crashing. 
-                    As the subjects get harder, the student feels *less* capable, not more. This 'Internal Defeat' 
-                    is the #1 reason students stop trying before they actually fail.
-                """)
-            elif conf_acc > 0.1:
-                st.success(f"**Current Trend: Growth Mindset (+{conf_acc:.2f})**")
-                st.write("""
-                    **In Simple Terms:** The student is 'learning how to learn.' Even if the work is hard, 
-                    their self-belief is growing faster than the difficulty. This is a massive shield against stress.
-                """)
+        with st.container(border=True):
+            st.subheader("🎯 Recommended Success Strategy")
+            if status == "High Risk":
+                strat_c1, strat_c2, strat_c3 = st.columns(3)
+                strat_c1.markdown("**1. Break the Spiral**\nAssign one 15-min success task to rebuild confidence.")
+                strat_c2.markdown("**2. Sleep Audit**\nMandatory rest schedule adjustment for cognitive recovery.")
+                strat_c3.markdown("**3. Human Connection**\nHigh-touch face-to-face academic advisory meeting.")
             else:
-                st.info("**Current Trend: Steady Plateau**")
-                st.write("""
-                    **In Simple Terms:** The student is 'coasting.' They aren't gaining confidence, but they aren't losing it. 
-                    While stable, they are at risk of 'stagnation' if the final exams become significantly harder than current work.
-                """)
+                st.success("✅ **Maintain Momentum:** Student is self-regulating effectively. Reinforce current routines.")
 
-        
-
-        # 2. BIOLOGICAL SUSTAINABILITY
-        with st.container():
-            st.subheader("🛌 Biological Sustainability: The Battery Life")
-            sleep_slp = cv.get('Sleep_Hours_Slope', 0)
-            
-            if sleep_slp < -0.1:
-                st.error(f"**Current Trend: Energy Depletion ({sleep_slp:.2f})**")
-                st.write("""
-                    **In Simple Terms:** This is the student's foundation. They are 'trading sleep for study time.' 
-                    The brain cannot move information into long-term memory without rest. This trend predicts 
-                    a total cognitive burnout within 2-3 weeks.
-                """)
-            else:
-                st.success("**Current Trend: Healthy Rest Cycle**")
-                st.write("""
-                    **In Simple Terms:** The student is protecting their brain. By keeping sleep stable, 
-                    they ensure their focus and memory remain sharp. This is the most underrated 'success' factor.
-                """)
-
-        # 3. ENGAGEMENT STABILITY
-        with st.container():
-            st.subheader("📈 Engagement Stability: The Rhythm of Work")
-            mot_vol = cv.get('Motivation_Volatility', 0)
-            
-            if mot_vol > 1.2:
-                st.warning(f"**Current Trend: Reactive 'Panic' Study ({mot_vol:.2f})**")
-                st.write("""
-                    **In Simple Terms:** The student only works when they are terrified of a deadline. 
-                    This 'Cramming' cycle creates massive spikes of stress followed by total exhaustion. 
-                    It is a very fragile way to study.
-                """)
-            else:
-                st.success("**Current Trend: Proactive Discipline**")
-                st.write("""
-                    **In Simple Terms:** The student treats university like a marathon, not a sprint. 
-                    They have a steady, predictable daily routine. This consistency is the strongest 
-                    mathematical predictor of passing.
-                """)
-
-        
-
-        # 4. INSTITUTIONAL ANCHORS
-        with st.container():
-            st.subheader("⚓ Institutional Anchors: The Safety Net")
-            att = cv.get('Attendance_Percentage', 0)
-            
-            if att < 7:
-                st.error(f"**Current Status: Loose Tethering ({att}/10)**")
-                st.write("""
-                    **In Simple Terms:** This is about 'Belonging.' Every lecture missed is a cut in the rope 
-                    connecting the student to the university. When a student stops showing up, they have 
-                    usually already 'dropped out' mentally.
-                """)
-            else:
-                st.success(f"**Current Status: Strong Tethering ({att}/10)**")
-                st.write("""
-                    **In Simple Terms:** The student is physically and socially present. Being 'in the room' 
-                    means they receive help, feedback, and peer support automatically. They are anchored 
-                    securely to the campus community.
-                """)
-
-        # C. THE "WHAT-IF" INTERVENTION (Actionable Prescription)
-        st.write("---")
-        st.subheader("🎯 Recommended Success Strategy")
-        
-        if status == "High Risk":
-            st.info("💡 **Prescription for Immediate Improvement:**")
-            st.markdown(f"""
-                1. **Break the Spiral:** Assign one 'Micro-Task' (15 mins) that they can definitely finish. Success breeds confidence.
-                2. **Sleep Audit:** Force a schedule change. No academic gains are possible while the 'Battery' is at 5%.
-                3. **Human Connection:** A face-to-face meeting is required. Digital alerts are not enough for a 'Loose Tethered' student.
-            """)
-        else:
-            st.success("💡 **Prescription for Sustaining Success:**")
-            st.markdown(f"""
-                1. **Acknowledge the Discipline:** Explicitly praise their routine. Positive reinforcement of 'Proactive Discipline' prevents future plateaus.
-                2. **Check the Biological Load:** Ask: "You're doing great, but are you getting enough rest?" to prevent a sudden shift in sleep slope.
-            """)
-
-        # D. TECHNICAL WEIGHTS (For Researchers)
+        # D. TECHNICAL WEIGHTS
         with st.expander("🛠️ View Decision Logic (Neural Weights)"):
             importance_df = pd.DataFrame({
                 "Intelligence Signal": [n.replace("_", " ").title() for n in ALL_EXPECTED_FEATURES[:15]],
@@ -343,159 +282,137 @@ def run_risk_module():
         save_prediction(student_id, float(prob), status, data.to_dict('records')[0])
 
     # --- 6. THE "DECISION LABORATORY" (Advanced Simulation Suite) ---
-    # PLACED OUTSIDE "IF SUBMIT" TO ALLOW REAL-TIME INTERACTION
     if 'last_run_data' in st.session_state:
         st.write("---")
         st.header("🧪 Prescriptive Simulation Laboratory")
-        st.info("Engineer a recovery strategy below to see real-time risk reduction.")
+        
+        # UPDATED: Added outer container for a dashboard look
+        with st.container(border=True):
+            st.info("💡 Engineer a recovery strategy by adjusting the levers below to see real-time risk reduction.")
 
-        with st.expander("🚀 OPEN SIMULATION THEATER", expanded=False):
-            st.markdown("### 🕹️ Strategy Configuration")
-            
-            # Load original baseline from the Last Successful Run
-            original_details = st.session_state['last_run_data']['details'].copy()
-            actual_prob = st.session_state['last_run_data']['risk_score']
-            
-            # Layout
-            col_lev1, col_lev2, col_lev3 = st.columns(3)
-            
-            with col_lev1:
-                st.markdown("#### 📚 Academic Levers")
-                sim_cgpa = st.slider("Modify CGPA", 0.0, 4.0, float(original_details['CGPA']), 0.05)
-                sim_att = st.slider("Modify Attendance", 0.0, 10.0, float(original_details['Attendance_Percentage']), 0.5)
-                sim_fail = st.select_slider("Subjects Failed", options=[0, 1, 2, 3, 4, 5], value=int(original_details['Failed_Subjects']))
-            
-            with col_lev2:
-                st.markdown("#### 🧠 Behavioral Levers")
-                sim_mot = st.slider("Boost Motivation", 1.0, 5.0, float(original_details['Motivation_Phase4']), 0.1)
-                sim_conf = st.slider("Boost Confidence", 1.0, 5.0, float(original_details['Confidence_Phase4']), 0.1)
-                sim_stress = st.slider("Internal Stress Level", 1.0, 5.0, float(original_details['Stress_Phase4']), 0.1)
-
-            with col_lev3:
-                st.markdown("#### 🛌 Biological Levers")
-                # Handle mapping back to integers for categorical sliders
-                sim_sleep = st.slider("Sleep Hygiene (0-4)", 0, 4, int(original_details.get('Sleep_Hours_Phase4', 2)))
-                sim_relax = st.slider("Relaxation Level (0-4)", 0, 4, int(original_details.get('Relaxation_Phase4', 2)))
-                sim_support = st.slider("Family Support (1-5)", 1, 5, int(original_details['Family_Support']))
-
-            # 1. Update Simulation DataFrame
-            sim_df = pd.DataFrame([original_details])
-            sim_df['CGPA'] = sim_cgpa
-            sim_df['Attendance_Percentage'] = sim_att
-            sim_df['Failed_Subjects'] = float(sim_fail)
-            sim_df['Motivation_Phase4'] = sim_mot
-            sim_df['Confidence_Phase4'] = sim_conf
-            sim_df['Stress_Phase4'] = sim_stress
-            sim_df['Sleep_Hours_Phase4'] = float(sim_sleep)
-            sim_df['Relaxation_Phase4'] = float(sim_relax)
-            sim_df['Family_Support'] = float(sim_support)
-
-            # 2. Re-calculate Probability using Scaler
-            sim_scaled = scaler.transform(sim_df[ALL_EXPECTED_FEATURES])
-            sim_scaled_df = pd.DataFrame(sim_scaled, columns=ALL_EXPECTED_FEATURES)
-            sim_prob = model.predict_proba(sim_scaled_df)[:, 1][0]
-            
-            st.divider()
-
-            # 3. Visual Impact Analysis
-            res_c1, res_c2 = st.columns([1, 2])
-            with res_c1:
-                st.markdown("#### 🔮 Outcome Projection")
-                diff = sim_prob - actual_prob
-                st.metric("Projected Risk", f"{sim_prob:.2%}", delta=f"{diff:+.2%}", delta_color="inverse")
+            with st.expander("🚀 OPEN SIMULATION THEATER", expanded=False):
+                original_details = st.session_state['last_run_data']['details'].copy()
+                actual_prob = st.session_state['last_run_data']['risk_score']
                 
-                if sim_prob < DEFAULT_THRESHOLD:
-                    st.success("✅ INTERVENTION SUCCESS")
-                else:
-                    st.warning("⚠️ INSUFFICIENT IMPACT")
-
-            with res_c2:
-                st.markdown("#### 📊 Sensitivity Impact Matrix")
-                impact_data = pd.DataFrame({
-                    "Category": ["Academic", "Behavioral", "Biological"],
-                    "Gravity": [abs(sim_cgpa - original_details['CGPA']) * 2, 
-                                abs(sim_mot - original_details['Motivation_Phase4']) * 1.5,
-                                abs(sim_sleep - original_details.get('Sleep_Hours_Phase4', 2)) * 1.2]
-                })
-                import plotly.express as px
-                fig_impact = px.bar(impact_data, x="Gravity", y="Category", orientation='h', 
-                                     color="Gravity", color_continuous_scale="Viridis", height=200)
-                fig_impact.update_layout(margin=dict(l=0,r=0,t=0,b=0), showlegend=False)
-                st.plotly_chart(fig_impact, use_container_width=True)
-
-            if st.button("📝 Finalize Intervention Prescription"):
-                # 1. Sync the Path
-                from database.app_db import DB_PATH 
+                # UPDATED: Cleaned up column naming for the 3-pillar dashboard
+                sim_col_ac, sim_col_bh, sim_col_bio = st.columns(3)
                 
-                try:
-                    import sqlite3
-                    conn = sqlite3.connect(DB_PATH)
-                    cursor = conn.cursor()
-                    
-                    # 2. Calculate the "Benefit" (Risk Reduction)
-                    actual_prob = st.session_state['last_run_data']['risk_score']
-                    risk_reduction = actual_prob - sim_prob
-                    
-                    # 3. THE MASTER MAPPING (All 9 Levers)
-                    cursor.execute("""
-                        INSERT OR REPLACE INTO intervention_goals 
-                        (student_id, target_cgpa, target_attendance, target_failed_subs, 
-                        target_motivation, target_confidence, target_stress, 
-                        target_sleep, target_relaxation, target_support, predicted_risk_reduction)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (
-                        st.session_state['last_student_id'], # ID
-                        float(sim_cgpa),                    # Academic 1
-                        float(sim_att),                     # Academic 2
-                        float(sim_fail),                    # Academic 3
-                        float(sim_mot),                     # Behavioral 1
-                        float(sim_conf),                    # Behavioral 2
-                        float(sim_stress),                  # Behavioral 3
-                        float(sim_sleep),                   # Biological 1
-                        float(sim_relax),                   # Biological 2
-                        float(sim_support),                 # Biological 3
-                        float(risk_reduction)               # The "Success" Metric
-                    ))
-                    
-                    conn.commit()
-                    conn.close()
-                    
-                    # 4. Apple-Grade Feedback
-                    st.balloons()
-                    st.success(f"🎯 Clinical Prescription Finalized for {st.session_state['last_student_id']}")
+                with sim_col_ac:
+                    st.markdown("#### 📚 Academic Levers")
+                    sim_cgpa = st.slider("Modify CGPA", 0.0, 4.0, float(original_details['CGPA']), 0.05)
+                    sim_att = st.slider("Modify Attendance", 0.0, 10.0, float(original_details['Attendance_Percentage']), 0.5)
+                    sim_fail = st.select_slider("Subjects Failed", options=[0, 1, 2, 3, 4, 5], value=int(original_details['Failed_Subjects']))
+                
+                with sim_col_bh:
+                    st.markdown("#### 🧠 Behavioral Levers")
+                    sim_mot = st.slider("Boost Motivation", 1.0, 5.0, float(original_details['Motivation_Phase4']), 0.1)
+                    sim_conf = st.slider("Boost Confidence", 1.0, 5.0, float(original_details['Confidence_Phase4']), 0.1)
+                    sim_stress = st.slider("Internal Stress Level", 1.0, 5.0, float(original_details['Stress_Phase4']), 0.1)
 
-                    # This expander acts as a "Digital Receipt" for the Counselor
-                    with st.expander("📄 View Finalized Intervention Summary", expanded=True):
-                        st.markdown(f"### Strategy Archive: {st.session_state['last_student_id']}")
-                        st.info("All 9 behavioral and academic levers have been synced to the Research Database.")
+                with sim_col_bio:
+                    st.markdown("#### 🛌 Biological Levers")
+                    sim_sleep = st.slider("Sleep Hygiene (0-4)", 0, 4, int(original_details.get('Sleep_Hours_Phase4', 2)))
+                    sim_relax = st.slider("Relaxation Level (0-4)", 0, 4, int(original_details.get('Relaxation_Phase4', 2)))
+                    sim_support = st.slider("Family Support (1-5)", 1, 5, int(original_details['Family_Support']))
+
+                # 1. Update Simulation DataFrame
+                sim_df = pd.DataFrame([original_details])
+                sim_df['CGPA'] = sim_cgpa
+                sim_df['Attendance_Percentage'] = sim_att
+                sim_df['Failed_Subjects'] = float(sim_fail)
+                sim_df['Motivation_Phase4'] = sim_mot
+                sim_df['Confidence_Phase4'] = sim_conf
+                sim_df['Stress_Phase4'] = sim_stress
+                sim_df['Sleep_Hours_Phase4'] = float(sim_sleep)
+                sim_df['Relaxation_Phase4'] = float(sim_relax)
+                sim_df['Family_Support'] = float(sim_support)
+
+                # 2. Re-calculate Probability using Scaler
+                sim_scaled = scaler.transform(sim_df[ALL_EXPECTED_FEATURES])
+                sim_scaled_df = pd.DataFrame(sim_scaled, columns=ALL_EXPECTED_FEATURES)
+                sim_prob = model.predict_proba(sim_scaled_df)[:, 1][0]
+                
+                st.divider()
+
+                # PRESERVED: Your Plotly Impact Matrix
+                res_c1, res_c2 = st.columns([1, 2])
+                with res_c1:
+                    st.markdown("#### 🔮 Outcome Projection")
+                    diff = sim_prob - actual_prob
+                    st.metric("Projected Risk", f"{sim_prob:.2%}", delta=f"{diff:+.2%}", delta_color="inverse")
+                    
+                    if sim_prob < DEFAULT_THRESHOLD:
+                        st.success("✅ INTERVENTION SUCCESS")
+                    else:
+                        st.warning("⚠️ INSUFFICIENT IMPACT")
+
+                with res_c2:
+                    st.markdown("#### 📊 Sensitivity Impact Matrix")
+                    impact_data = pd.DataFrame({
+                        "Category": ["Academic", "Behavioral", "Biological"],
+                        "Gravity": [abs(sim_cgpa - original_details['CGPA']) * 2, 
+                                    abs(sim_mot - original_details['Motivation_Phase4']) * 1.5,
+                                    abs(sim_sleep - original_details.get('Sleep_Hours_Phase4', 2)) * 1.2]
+                    })
+                    import plotly.express as px
+                    fig_impact = px.bar(impact_data, x="Gravity", y="Category", orientation='h', 
+                                         color="Gravity", color_continuous_scale="Viridis", height=200)
+                    fig_impact.update_layout(margin=dict(l=0,r=0,t=0,b=0), showlegend=False)
+                    # UPDATED: Used standard Streamlit 2026 syntax for responsive charts
+                    st.plotly_chart(fig_impact, use_container_width=True)
+
+                # PRESERVED: Your full SQLite logic and Digital Receipt UI
+                if st.button("📝 Finalize Intervention Prescription", width="stretch", type="primary"):
+                    from database.app_db import DB_PATH 
+                    
+                    try:
+                        import sqlite3
+                        conn = sqlite3.connect(DB_PATH)
+                        cursor = conn.cursor()
                         
-                        # Using 3 columns for a balanced, high-end dashboard look
-                        meta1, meta2, meta3 = st.columns(3)
+                        risk_reduction = actual_prob - sim_prob
                         
-                        with meta1:
-                            st.metric(label="Target CGPA", value=f"{sim_cgpa:.2f}")
-                            st.metric(label="Sleep Hygiene", value=f"{sim_sleep} / 4")
+                        cursor.execute("""
+                            INSERT OR REPLACE INTO intervention_goals 
+                            (student_id, target_cgpa, target_attendance, target_failed_subs, 
+                            target_motivation, target_confidence, target_stress, 
+                            target_sleep, target_relaxation, target_support, predicted_risk_reduction)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            st.session_state['last_student_id'],
+                            float(sim_cgpa), float(sim_att), float(sim_fail), 
+                            float(sim_mot), float(sim_conf), float(sim_stress), 
+                            float(sim_sleep), float(sim_relax), float(sim_support), 
+                            float(risk_reduction)
+                        ))
+                        
+                        conn.commit()
+                        conn.close()
+                        
+                        st.balloons()
+                        st.success(f"🎯 Clinical Prescription Finalized for {st.session_state['last_student_id']}")
+
+                        with st.expander("📄 View Finalized Intervention Summary", expanded=True):
+                            st.markdown(f"### Strategy Archive: {st.session_state['last_student_id']}")
+                            st.info("All 9 behavioral and academic levers have been synced to the Research Database.")
                             
-                        with meta2:
-                            st.metric(label="Attendance Goal", value=f"{sim_att:.1f}%")
-                            st.metric(label="Stress Cap", value=f"{sim_stress} / 5")
+                            meta1, meta2, meta3 = st.columns(3)
                             
-                        with meta3:
-                            # The 'delta' shows the improvement from the original risk
-                            improvement = actual_prob - sim_prob
-                            st.metric(label="Risk Reduction", value=f"{improvement:.2%}", delta="Optimized")
-                            st.metric(label="Motivation Target", value=f"{sim_mot} / 5")
+                            with meta1:
+                                st.metric(label="Target CGPA", value=f"{sim_cgpa:.2f}")
+                                st.metric(label="Sleep Hygiene", value=f"{sim_sleep} / 4")
+                                
+                            with meta2:
+                                st.metric(label="Attendance Goal", value=f"{sim_att:.1f}%")
+                                st.metric(label="Stress Cap", value=f"{sim_stress} / 5")
+                                
+                            with meta3:
+                                improvement = actual_prob - sim_prob
+                                st.metric(label="Risk Reduction", value=f"{improvement:.2%}", delta="Optimized")
+                                st.metric(label="Motivation Target", value=f"{sim_mot} / 5")
 
-                        st.caption(f"Prescription Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-                    
-                except Exception as e:
-                    # Captures any DB locks or path errors gracefully
-                    st.error(f"❌ Synchronization Failure: {e}")
-                    st.warning("Ensure the database is not open in another application (like DB Browser).")
-
-
-
-
-
-
-
+                            st.caption(f"Prescription Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+                        
+                    except Exception as e:
+                        st.error(f"❌ Synchronization Failure: {e}")
+                        st.warning("Ensure the database is not open in another application (like DB Browser).")
