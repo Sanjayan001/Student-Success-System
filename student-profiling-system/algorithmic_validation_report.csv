@@ -1,0 +1,4 @@
+Algorithm,Clusters Found,Noise/Outliers Ignored,Silhouette Score (Higher = Better),Calinski-Harabasz (Higher = Better),Davies-Bouldin (Lower = Better)
+K-Means (k=3),3,0,0.1194,121.04,2.4326
+Hierarchical (k=3),3,0,0.1068,95.86,2.7056
+DBSCAN,11,652,-0.2089,6.21,1.2582
