@@ -1,0 +1,101 @@
+student_id,course_id,course_name,pred_rating
+S04659,C066,Investment Analysis,35.242
+S04659,C051,Thermodynamics,34.5353
+S04659,C069,Financial Technology,33.8072
+S04659,C056,Mechatronics,27.2663
+S04659,C044,Digital Electronics,26.5647
+S04659,C059,Human Resource Management,23.7624
+S04659,C046,Control Systems,22.7319
+S04659,C015,Image Understanding and Processing,22.2012
+S04659,C085,Solar Power Systems,18.0535
+S04659,C041,Network Design,16.5363
+S07252,C077,Hospitality Operations,58.5917
+S07252,C081,Precision Agriculture,56.0615
+S07252,C021,Data Structures and Algorithms,49.176
+S07252,C057,Principles of Management,38.8099
+S07252,C075,Telemedicine,38.1435
+S07252,C031,Ethical Hacking,35.432
+S07252,C003,Big Data Analytics,34.4742
+S07252,C089,Data Privacy and Law,33.9744
+S07252,C027,Microservices Architecture,31.1964
+S07252,C088,Technology Ethics,28.3937
+S08845,C086,Energy Management,40.3337
+S08845,C064,Financial Accounting,37.6099
+S08845,C072,Public Health,37.0622
+S08845,C004,Statistical Learning,33.9649
+S08845,C032,Cryptography,32.9742
+S08845,C011,Deep Learning,30.578
+S08845,C044,Digital Electronics,29.3881
+S08845,C002,Data Mining and Warehousing,28.1962
+S08845,C034,Penetration Testing,24.3183
+S08845,C059,Human Resource Management,23.0152
+S03404,C074,Health Data Analytics,37.0886
+S03404,C082,Agribusiness Management,34.0029
+S03404,C027,Microservices Architecture,33.8976
+S03404,C083,Sustainable Farming,28.6914
+S03404,C047,Embedded Systems,26.2276
+S03404,C063,Supply Chain Management,25.922
+S03404,C018,Generative AI,25.8007
+S03404,C025,Cloud Computing,25.2878
+S03404,C060,Operations Management,23.9302
+S03404,C067,Financial Markets,23.0813
+S01629,C074,Health Data Analytics,48.3296
+S01629,C081,Precision Agriculture,48.1376
+S01629,C083,Sustainable Farming,46.7524
+S01629,C079,Sustainable Tourism,45.9729
+S01629,C008,Time Series Analysis,43.5234
+S01629,C049,Renewable Energy Systems,39.7345
+S01629,C075,Telemedicine,36.7294
+S01629,C014,Reinforcement Learning,34.763
+S01629,C093,Business Law,32.5425
+S01629,C070,Medical Informatics,31.262
+S01759,C048,Signal Processing,50.7463
+S01759,C093,Business Law,41.6811
+S01759,C008,Time Series Analysis,39.7681
+S01759,C086,Energy Management,32.2412
+S01759,C078,Event Management,32.0351
+S01759,C057,Principles of Management,28.0696
+S01759,C089,Data Privacy and Law,26.5531
+S01759,C088,Technology Ethics,26.2886
+S01759,C066,Investment Analysis,25.7526
+S01759,C063,Supply Chain Management,25.0431
+S00531,C018,Generative AI,58.3634
+S00531,C056,Mechatronics,33.5551
+S00531,C008,Time Series Analysis,33.3779
+S00531,C069,Financial Technology,31.412
+S00531,C083,Sustainable Farming,29.8997
+S00531,C081,Precision Agriculture,26.9127
+S00531,C028,Software Testing and QA,26.6363
+S00531,C032,Cryptography,25.6825
+S00531,C013,Computer Vision,24.3229
+S00531,C049,Renewable Energy Systems,23.3296
+S08938,C052,Fluid Mechanics,30.866
+S08938,C027,Microservices Architecture,23.8389
+S08938,C005,Data Visualization,22.997
+S08938,C007,Predictive Analytics,18.9112
+S08938,C048,Signal Processing,18.0048
+S08938,C031,Ethical Hacking,16.6488
+S08938,C026,DevOps and CI/CD,16.1291
+S08938,C093,Business Law,15.6699
+S08938,C053,Manufacturing Processes,14.3294
+S08938,C055,Robotics,14.1354
+S07990,C014,Reinforcement Learning,43.2543
+S07990,C086,Energy Management,34.8197
+S07990,C028,Software Testing and QA,33.9857
+S07990,C070,Medical Informatics,26.3319
+S07990,C083,Sustainable Farming,24.7148
+S07990,C075,Telemedicine,22.0911
+S07990,C021,Data Structures and Algorithms,21.8595
+S07990,C084,Renewable Energy Technologies,19.5091
+S07990,C089,Data Privacy and Law,19.284
+S07990,C041,Network Design,18.2144
+S07586,C084,Renewable Energy Technologies,43.7431
+S07586,C034,Penetration Testing,40.6023
+S07586,C064,Financial Accounting,37.6867
+S07586,C069,Financial Technology,36.0712
+S07586,C005,Data Visualization,32.9898
+S07586,C045,Power Systems,32.9872
+S07586,C092,Intellectual Property,28.3938
+S07586,C051,Thermodynamics,23.0412
+S07586,C025,Cloud Computing,21.6978
+S07586,C039,Wireless Networks,21.4165
