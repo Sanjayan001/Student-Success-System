@@ -6,3 +6,4 @@ __pycache__/
 .streamlit/
 Course-Recommendation/venv_sanjayan/
 Course-Recommendation/venv_sanjayan_cr/
+Course-Recommendation/recommendations_*.csv
