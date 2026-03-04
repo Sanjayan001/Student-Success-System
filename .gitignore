@@ -4,3 +4,5 @@ __pycache__/
 .env
 .venv/
 .streamlit/
+Course-Recommendation/venv_sanjayan/
+Course-Recommendation/venv_sanjayan_cr/
