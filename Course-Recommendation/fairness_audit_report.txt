@@ -1,0 +1,36 @@
+╔============================================================╗
+║             ALGORITHMIC FAIRNESS AUDIT REPORT              ║
+╚============================================================╝
+
+Generated: 2026-02-20 12:40:24
+Evaluation: Top-K=10, Cohorts=GPA Tiers
+
+──────────────────────────────────────────────────────────────
+📊 COVERAGE PARITY (Unique Courses Recommended)
+──────────────────────────────────────────────────────────────
+  HIGH_GPA            :   0 courses
+  MID_GPA             :   0 courses
+  LOW_GPA             :  92 courses
+  Gap: 0.0%  ✅ FAIR
+
+──────────────────────────────────────────────────────────────
+🎯 RANKING QUALITY PARITY (NDCG@10)
+──────────────────────────────────────────────────────────────
+  HIGH_GPA            : 0.0000
+  MID_GPA             : 0.0000
+  LOW_GPA             : 0.9710
+  Gap: 0.0%  ✅ FAIR
+
+──────────────────────────────────────────────────────────────
+🌈 DIVERSITY PARITY (Avg Course Dissimilarity)
+──────────────────────────────────────────────────────────────
+  HIGH_GPA            : 0.0000
+  MID_GPA             : 0.0000
+  LOW_GPA             : 0.1715
+  Gap: 0.0%  ✅ FAIR
+
+──────────────────────────────────────────────────────────────
+📋 SUMMARY & RECOMMENDATIONS
+──────────────────────────────────────────────────────────────
+✅ System shows GOOD fairness properties across cohorts.
+   Consider: Monitor fairness quarterly as system evolves.
