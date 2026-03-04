@@ -1,0 +1,49 @@
+======================================================================
+DEEP LEARNING FUSION MODEL — SHAP FEATURE IMPORTANCE ANALYSIS
+======================================================================
+
+
+1. GLOBAL FEATURE IMPORTANCE
+----------------------------------------------------------------------
+(How much does each signal influence the final score on average?)
+
+  Success Prob        :  49.5% █████████
+  CF Score            :  32.2% ██████
+  CBF Score           :  11.0% ██
+  Risk Score          :   3.9% 
+  Job Market          :   3.4% 
+
+
+2. FEATURE DIRECTION ANALYSIS
+----------------------------------------------------------------------
+(Do higher values increase or decrease the recommendation score?)
+
+  CF Score            : ↑ POSITIVE      (corr: +0.856)
+  CBF Score           : ↑ POSITIVE      (corr: +0.625)
+  Success Prob        : ↑ POSITIVE      (corr: +0.992)
+  Job Market          : ↑ POSITIVE      (corr: +0.231)
+  Risk Score          : ↑ POSITIVE      (corr: +0.650)
+
+
+3. INTERPRETATION & INSIGHTS
+----------------------------------------------------------------------
+
+✓ Most important signal: Success Prob (49.5%)
+  → The model relies most heavily on this signal for ranking.
+
+✓ What each signal represents:
+  - CF Score:      Collaborative filtering (similar students liked this)
+  - CBF Score:     Content-based (matches your interests/skills)
+  - Success Prob:  Predicted success rate given your profile
+  - Job Market:    Job market demand for this skill in 2035
+  - Risk Score:    Your academic risk (0=safe, 1=at-risk)
+
+✓ Key findings:
+  → The model prioritizes student success chances.
+     Implication: Recommendations aim to maximize course passing rates.
+
+✓ Comparison to baseline (fixed weights):
+  Baseline weights: CF=0.40, CBF=0.35, Success=0.20, Job=0.05
+  Learned weights:  CF=32.2%, CBF=11.0%, Success=49.5%, Job=3.4%
+
+======================================================================

@@ -1,0 +1,4 @@
+metric,high_gpa,mid_gpa,low_gpa
+coverage_parity,0.0,0.0,92.0
+ndcg_parity,0.0,0.0,0.970996832107364
+diversity_parity,0.0,0.0,0.1714785414426235
