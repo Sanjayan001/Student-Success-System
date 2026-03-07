@@ -50,10 +50,13 @@ def navigate(view_name):
 # --- 4. YOUR SUB-PORTAL ---
 if st.session_state.current_view == 'MySuite':
     
-    # FORCED ESCAPE HATCH: This explicitly tells the top-level browser window to reload at Port 8501
+    # 🚀 THE BREAKOUT BUTTON: Only appears on this main component page!
     st.markdown("""
-        <a href="http://localhost:8501" target="_top" class="html-back-btn" title="Back to Grand Lobby">
-            «
+        <a href="http://localhost:8501" target="_top" style="
+            background-color: #3b82f6; color: white; padding: 0.5rem 1rem; 
+            border-radius: 0.5rem; text-decoration: none; font-weight: 600; 
+            display: inline-block; margin-bottom: 1rem; border: none; cursor: pointer;">
+            🏠 Main Lobby
         </a>
     """, unsafe_allow_html=True)
 
