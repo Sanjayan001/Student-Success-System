@@ -9,3 +9,4 @@ database/*.sqlite
 Course-Recommendation/venv_sanjayan/
 Course-Recommendation/venv_sanjayan_cr/
 Course-Recommendation/recommendations_*.csv
+Risk-Prediction/venv_nazib_rp
