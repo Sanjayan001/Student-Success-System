@@ -4,3 +4,8 @@ __pycache__/
 .env
 .venv/
 .streamlit/
+database/*.db
+database/*.sqlite
+Course-Recommendation/venv_sanjayan/
+Course-Recommendation/venv_sanjayan_cr/
+Course-Recommendation/recommendations_*.csv
