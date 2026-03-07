@@ -8,6 +8,7 @@ database/*.db
 database/*.sqlite
 Course-Recommendation/venv_sanjayan/
 Course-Recommendation/venv_sanjayan_cr/
+student-profiling-system/venv_sanjayan_sp
 Course-Recommendation/recommendations_*.csv
 Risk-Prediction/venv_nazib_rp/
 Risk-Prediction/.streamlit/
