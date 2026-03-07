@@ -758,13 +758,24 @@ def run_risk_module():
             data[f'{m}_Slope'] = float(np.polyfit(x_points, p_vals, 1)[0])
             data[f'{m}_Acceleration'] = float((p_vals[3] - p_vals[2]) - (p_vals[1] - p_vals[0]))
 
+        # --- AI PREDICTION ---
         X_scaled_array = scaler.transform(data)
         X_scaled_df = pd.DataFrame(X_scaled_array, columns=ALL_EXPECTED_FEATURES)
         prob = model.predict_proba(X_scaled_df)[:, 1][0]
         status = "High Risk" if prob >= DEFAULT_THRESHOLD else "Low Risk"
         prob_percent = prob * 100
 
+        # 1. Save the ID
         st.session_state['last_student_id'] = student_id
+        
+        # 2. ✅ ADD THIS BACK: Pass the context to the AI Counselor & Tracker!
+        st.session_state['last_run_data'] = {
+            'status': status,
+            'risk_score': prob,
+            'details': data.to_dict('records')[0]
+        }
+        
+        # 3. Save to database
         save_prediction(student_id, float(prob), status, data.to_dict('records')[0])
 
         st.divider()
