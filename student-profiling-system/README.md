@@ -42,7 +42,7 @@ python -m pip install -r requirements.txt
 ### 2. Launching the MLOps Dashboard
 Start the Streamlit Executive UI:
 ```powershell
-python -m streamlit run dashboard/app.py
+streamlit run dashboard/app.py
 ```
 
 ### 3. Secure Authentication
