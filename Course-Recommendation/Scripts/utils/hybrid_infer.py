@@ -35,6 +35,25 @@ W_CBF = 0.35
 W_P = 0.20
 W_JOB = 0.05
 
+# Degree program → allowed course domains (for domain_restrict mode)
+DEGREE_TO_DOMAINS = {
+    "Artificial Intelligence":    ["AI", "Data Science", "Software Engineering"],
+    "Computer Science":           ["Software Engineering", "AI", "Data Science", "Networking", "Cybersecurity"],
+    "Information Technology":     ["Software Engineering", "Networking", "Cybersecurity", "AI"],
+    "Data Science":               ["Data Science", "AI", "Software Engineering"],
+    "Cybersecurity":              ["Cybersecurity", "Networking", "Software Engineering"],
+    "Mechanical Engineering":     ["Mechanical", "Electrical", "Energy"],
+    "Electrical Engineering":     ["Electrical", "Mechanical", "Energy", "Networking"],
+    "Business Management":        ["Management", "Finance", "Law", "Ethics"],
+    "Finance":                    ["Finance", "Management", "Law"],
+    "Law":                        ["Law", "Ethics", "Management"],
+    "Medicine":                   ["Healthcare", "Ethics"],
+    "Nursing":                    ["Healthcare", "Ethics"],
+    "Agriculture":                ["Agriculture", "Energy", "Ethics"],
+    "Tourism and Hospitality":    ["Tourism", "Management"],
+    "Renewable Energy":           ["Energy", "Electrical", "Mechanical"],
+}
+
 def load_artifacts():
     df = pd.read_csv(DF_PATH)
     tfidf = joblib.load(TFIDF_PATH)
@@ -236,6 +255,7 @@ def recommend(
     explain=True,
     diversity_lambda=0.05,
     scoring_mode: str = "auto",
+    domain_restrict: bool = False,
 ):
     (
         df,
@@ -294,6 +314,13 @@ def recommend(
         student_ref = df.iloc[0].to_dict()
     else:
         student_ref = student_rows.iloc[0].to_dict()
+
+    # Domain restriction setup
+    allowed_domains = None
+    if domain_restrict:
+        student_degree = student_ref.get('degree_program', None)
+        if student_degree and student_degree in DEGREE_TO_DOMAINS:
+            allowed_domains = set(DEGREE_TO_DOMAINS[student_degree])
 
     # Adapt fusion weights based on job priority
     jp = (job_priority or "Balanced").strip().lower()
@@ -354,6 +381,10 @@ def recommend(
             pass
 
     for idx, cid in enumerate(course_ids):
+        # Domain restriction filter
+        if allowed_domains is not None:
+            if course_domain_map.get(cid, '') not in allowed_domains:
+                continue
         job = float(job_market_map.get(cid, 0.0))
         risk = float(student_ref.get('risk_score', 0))
         cbf_score = float(cbf_arr[idx])

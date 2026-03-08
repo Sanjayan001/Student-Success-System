@@ -11,6 +11,16 @@ import pandas as pd
 import numpy as np
 import sys
 import os
+import requests
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Pre-load YouTube API key from .env into session state (can be overridden in sidebar)
+if "yt_api_key" not in st.session_state:
+    _env_yt_key = os.getenv("YOUTUBE_API_KEY", "")
+    if _env_yt_key:
+        st.session_state["yt_api_key"] = _env_yt_key
 
 # Add Scripts/utils to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'Scripts', 'utils'))
@@ -292,9 +302,64 @@ STUDY_RESOURCES = {
     },
 }
 
-def get_study_resources(domain):
-    """Return study resources for a given course domain."""
-    return STUDY_RESOURCES.get(domain, {
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_live_books(course_name: str, max_results: int = 4):
+    """Fetch real book references from Google Books API (no key required)."""
+    try:
+        q = requests.utils.quote(f"{course_name} textbook")
+        url = (
+            f"https://www.googleapis.com/books/v1/volumes"
+            f"?q={q}&maxResults={max_results}&orderBy=relevance"
+            f"&printType=books&langRestrict=en"
+        )
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            books = []
+            for item in resp.json().get("items", []):
+                info = item.get("volumeInfo", {})
+                title = info.get("title", "")
+                authors = ", ".join(info.get("authors", ["Unknown"]))
+                preview = info.get("previewLink", "https://books.google.com/")
+                if title:
+                    books.append((f"{title} — {authors}", preview))
+            return books
+    except Exception:
+        pass
+    return []
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_youtube_videos(query: str, api_key: str, max_results: int = 4):
+    """Fetch live tutorial videos via YouTube Data API v3."""
+    try:
+        q = requests.utils.quote(f"{query} tutorial")
+        url = (
+            f"https://www.googleapis.com/youtube/v3/search"
+            f"?part=snippet&q={q}&type=video&maxResults={max_results}"
+            f"&videoCategoryId=27&relevanceLanguage=en&key={api_key}"
+        )
+        resp = requests.get(url, timeout=5)
+        if resp.status_code == 200:
+            videos = []
+            for item in resp.json().get("items", []):
+                snippet = item.get("snippet", {})
+                title = snippet.get("title", "")
+                channel = snippet.get("channelTitle", "")
+                vid_id = item.get("id", {}).get("videoId", "")
+                if title and vid_id:
+                    videos.append((
+                        f"{title} ({channel})",
+                        f"https://www.youtube.com/watch?v={vid_id}"
+                    ))
+            return videos
+    except Exception:
+        pass
+    return []
+
+
+def get_study_resources(domain, course_name=None, yt_api_key=None):
+    """Return study resources. Fetches live data when course_name is provided."""
+    _default = {
         "youtube": [
             ("Khan Academy – Free Courses", "https://www.khanacademy.org/"),
             ("Coursera Top Courses", "https://www.coursera.org/browse"),
@@ -304,7 +369,30 @@ def get_study_resources(domain):
             ("MIT OpenCourseWare", "https://ocw.mit.edu/"),
             ("Google Scholar", "https://scholar.google.com/"),
         ],
-    })
+    }
+    static = STUDY_RESOURCES.get(domain, _default)
+
+    if not course_name:
+        return dict(static)
+
+    result = dict(static)
+    is_live = False
+
+    # Live book references via Google Books API (no key needed)
+    live_books = fetch_live_books(course_name)
+    if live_books:
+        result["references"] = live_books
+        is_live = True
+
+    # Live YouTube videos if an API key is provided
+    if yt_api_key:
+        live_videos = fetch_youtube_videos(course_name, yt_api_key)
+        if live_videos:
+            result["youtube"] = live_videos
+            is_live = True
+
+    result["_is_live"] = is_live
+    return result
 
 
 # Custom CSS
@@ -355,9 +443,9 @@ def load_dataset():
 
 # Cache recommendations for better performance
 @st.cache_data(ttl=3600, show_spinner="🔄 Loading cached recommendations...")
-def get_recommendations(student_id, top_n, job_priority):
+def get_recommendations(student_id, top_n, job_priority, domain_restrict=False):
     """Get recommendations with caching for better performance"""
-    return recommend(student_id, top_n=top_n, job_priority=job_priority)
+    return recommend(student_id, top_n=top_n, job_priority=job_priority, domain_restrict=domain_restrict)
 
 # Cache new user recommendations
 @st.cache_data(ttl=3600, show_spinner="🔄 Generating recommendations...")
@@ -370,13 +458,14 @@ def get_student_profile(df, student_id):
     student_data = df[df['student_id'] == student_id]
     if student_data.empty:
         return None
-    
+
     return {
         'gpa': student_data['previous_GPA'].mean(),
         'attendance': student_data['attendance_rate'].mean(),
         'risk': student_data['risk_score'].mean(),
         'courses_taken': len(student_data),
-        'degree': student_data['degree_program'].iloc[0] if 'degree_program' in student_data.columns else "Unknown"
+        'degree': student_data['degree_program'].iloc[0] if 'degree_program' in student_data.columns else "Unknown",
+        'current_year': int(student_data['current_year'].iloc[0]) if 'current_year' in student_data.columns else None,
     }
 
 # Main app
@@ -461,9 +550,31 @@ def show_existing_student_ui(df, available_students, available_domains):
             value="Balanced",
             help="Prioritize your interests or job market demand?"
         )
-        
+
         st.divider()
-        
+
+        # --- Recommendation Scope Toggle ---
+        st.markdown("**🎯 Recommendation Scope**")
+        domain_restrict = st.toggle(
+            "🔒 Focus on My Degree Program Only",
+            value=False,
+            help=(
+                "ON  → Only courses aligned with your degree program domains are considered.\n"
+                "OFF → All 15 domains are explored freely (maximum diversity)."
+            )
+        )
+        if domain_restrict:
+            st.warning(
+                "🔒 **Focused Mode** — Recommendations limited to your "
+                "degree's core domains only."
+            )
+        else:
+            st.success(
+                "🌐 **Open Mode** — Exploring ALL domains for maximum diversity."
+            )
+
+        st.divider()
+
         # Generate button with better styling
         generate_btn = st.button(
             "🔍 Get Recommendations", 
@@ -501,7 +612,7 @@ def show_existing_student_ui(df, available_students, available_domains):
             progress_bar.progress(50)
             
             # Get recommendations (with caching)
-            recs = get_recommendations(student_id, num_recs, job_priority)
+            recs = get_recommendations(student_id, num_recs, job_priority, domain_restrict)
             
             progress_text.text("🔍 Step 3/4: Applying filters...")
             progress_bar.progress(75)
@@ -528,8 +639,23 @@ def show_existing_student_ui(df, available_students, available_domains):
             st.session_state['profile'] = profile
             st.session_state['student_id'] = student_id
             
-            st.success(f"✅ Generated {len(recs)} recommendations successfully!")
-            
+            if domain_restrict:
+                # Show which domains were included
+                import sys, os as _os
+                _sys_path = _os.path.join(_os.path.dirname(__file__), 'Scripts', 'utils')
+                if _sys_path not in sys.path:
+                    sys.path.insert(0, _sys_path)
+                from hybrid_infer import DEGREE_TO_DOMAINS
+                _deg = profile.get('degree', '')
+                _doms = DEGREE_TO_DOMAINS.get(_deg, [])
+                _dom_str = ", ".join(_doms) if _doms else "all domains"
+                st.success(
+                    f"✅ Generated {len(recs)} recommendations in **Focused Mode** "
+                    f"({_deg} → domains: **{_dom_str}**)"
+                )
+            else:
+                st.success(f"✅ Generated {len(recs)} recommendations in **Open Mode** (all domains).")
+
         except Exception as e:
             progress_text.empty()
             progress_bar.empty()
@@ -551,23 +677,23 @@ def show_existing_student_ui(df, available_students, available_domains):
         
         # Student Profile Dashboard
         st.header(f"👤 Student Profile: {sid}")
-        
-        col1, col2, col3, col4, col5 = st.columns(5)
-        
+
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
+
         with col1:
             st.metric(
                 "GPA",
                 f"{profile['gpa']:.2f}/4.0",
                 delta="Good" if profile['gpa'] >= 3.0 else "Improving"
             )
-        
+
         with col2:
             st.metric(
                 "Attendance",
                 f"{profile['attendance']*100:.0f}%",
                 delta="Excellent" if profile['attendance'] >= 0.8 else "Needs Work"
             )
-        
+
         with col3:
             risk_label = "Low" if profile['risk'] < 0.3 else "Moderate" if profile['risk'] < 0.6 else "High"
             st.metric(
@@ -575,19 +701,27 @@ def show_existing_student_ui(df, available_students, available_domains):
                 risk_label,
                 delta="Good" if profile['risk'] < 0.4 else "Monitor"
             )
-        
+
         with col4:
             st.metric(
                 "Courses Taken",
                 profile['courses_taken']
             )
-        
+
         with col5:
+            degree_display = profile['degree']
             st.metric(
-                "Degree Program",
-                profile['degree'][:15] + "..." if len(profile['degree']) > 15 else profile['degree']
+                "🎓 Degree Program",
+                degree_display[:18] + "..." if len(degree_display) > 18 else degree_display
             )
-        
+
+        with col6:
+            year_val = profile.get('current_year')
+            st.metric(
+                "📅 Year of Study",
+                f"Year {year_val}" if year_val else "N/A"
+            )
+
         st.divider()
         
         # Visualizations
@@ -629,7 +763,8 @@ def show_existing_student_ui(df, available_students, available_domains):
         st.divider()
         
         # Recommendation Cards with count
-        st.header(f"📚 Your Top {len(recs)} Personalized Recommendations")
+        mode_badge = "🔒 Focused Mode" if domain_restrict else "🌐 Open Mode"
+        st.header(f"📚 Your Top {len(recs)} Personalized Recommendations  {mode_badge}")
         
         # Show filter results if applicable
         if len(recs) < num_recs:
@@ -679,17 +814,23 @@ def show_existing_student_ui(df, available_students, available_domains):
 
                     # Study resources panel
                     domain = rec.get('course_domain', '')
-                    resources = get_study_resources(domain)
-                    with st.expander("📚 Study Resources & References", expanded=False):
+                    _yt_key = st.session_state.get('yt_api_key', None)
+                    resources = get_study_resources(domain, course_name=rec.get('course_name'), yt_api_key=_yt_key)
+                    _badge = "🔴 Live" if resources.get('_is_live') else "📌 Static"
+                    with st.expander(f"📚 Study Resources & References  {_badge}", expanded=False):
+                        if resources.get('_is_live'):
+                            st.caption("🔴 **Live results** — Google Books API" + (" & YouTube" if _yt_key else "") + f" for **{rec.get('course_name', domain)}**")
+                        else:
+                            st.caption("📌 Curated links — add YouTube API key in sidebar for live videos.")
                         res_col1, res_col2 = st.columns(2)
                         with res_col1:
                             st.markdown("**🎬 YouTube Tutorials**")
                             for title, url in resources.get("youtube", []):
                                 st.markdown(f"- [▶ {title}]({url})")
                         with res_col2:
-                            st.markdown("**🔗 References & Docs**")
+                            st.markdown("**📖 Books & References**")
                             for title, url in resources.get("references", []):
-                                st.markdown(f"- [🌐 {title}]({url})")
+                                st.markdown(f"- [📗 {title}]({url})")
 
         with tab2:
             # Detailed cards view
@@ -768,17 +909,23 @@ def show_existing_student_ui(df, available_students, available_domains):
 
                 # Study resources panel
                 domain = rec.get('course_domain', '')
-                resources = get_study_resources(domain)
-                with st.expander("📚 Study Resources & References", expanded=False):
+                _yt_key = st.session_state.get('yt_api_key', None)
+                resources = get_study_resources(domain, course_name=rec.get('course_name'), yt_api_key=_yt_key)
+                _badge = "🔴 Live" if resources.get('_is_live') else "📌 Static"
+                with st.expander(f"📚 Study Resources & References  {_badge}", expanded=False):
+                    if resources.get('_is_live'):
+                        st.caption("🔴 **Live results** — Google Books API" + (" & YouTube" if _yt_key else "") + f" for **{rec.get('course_name', domain)}**")
+                    else:
+                        st.caption("📌 Curated links — add YouTube API key in sidebar for live videos.")
                     res_col1, res_col2 = st.columns(2)
                     with res_col1:
                         st.markdown("**🎬 YouTube Tutorials**")
                         for title, url in resources.get("youtube", []):
                             st.markdown(f"- [▶ {title}]({url})")
                     with res_col2:
-                        st.markdown("**🔗 References & Docs**")
+                        st.markdown("**📖 Books & References**")
                         for title, url in resources.get("references", []):
-                            st.markdown(f"- [🌐 {title}]({url})")
+                            st.markdown(f"- [📗 {title}]({url})")
 
                 st.divider()
         
@@ -885,15 +1032,19 @@ def show_new_user_ui(df, available_domains):
             help="Choose the domains/topics that interest you",
         )
         
-        # GPA input (precise)
+        # Overall skill level (maps to GPA internally for success prediction)
         gpa = st.number_input(
-            "📊 Your GPA",
+            "⭐ Overall Skill Level (out of 4.0)",
             min_value=0.0,
             max_value=4.0,
             value=3.0,
-            step=0.01,
-            format="%.2f",
-            help="Your current or expected GPA (0.0–4.0)"
+            step=0.1,
+            format="%.1f",
+            help=(
+                "Rate your overall skill level based on the subjects you selected.\n\n"
+                "0.0–1.0 = Beginner  |  1.0–2.0 = Elementary\n"
+                "2.0–3.0 = Intermediate  |  3.0–4.0 = Advanced"
+            )
         )
         
         st.divider()
@@ -917,7 +1068,7 @@ def show_new_user_ui(df, available_domains):
         )
         
         st.divider()
-        
+
         # Generate button
         generate_btn = st.button(
             "🔍 Get Recommendations", 
@@ -1026,17 +1177,23 @@ def show_new_user_ui(df, available_domains):
 
                     # Study resources panel
                     nu_domain = row.get('course_domain', '')
-                    nu_resources = get_study_resources(nu_domain)
-                    with st.expander("📚 Study Resources & References", expanded=False):
+                    _yt_key = st.session_state.get('yt_api_key', None)
+                    nu_resources = get_study_resources(nu_domain, course_name=row.get('course_name'), yt_api_key=_yt_key)
+                    _badge = "🔴 Live" if nu_resources.get('_is_live') else "📌 Static"
+                    with st.expander(f"📚 Study Resources & References  {_badge}", expanded=False):
+                        if nu_resources.get('_is_live'):
+                            st.caption("🔴 **Live results** — Google Books API" + (" & YouTube" if _yt_key else "") + f" for **{row.get('course_name', nu_domain)}**")
+                        else:
+                            st.caption("📌 Curated links — add YouTube API key in sidebar for live videos.")
                         nr_col1, nr_col2 = st.columns(2)
                         with nr_col1:
                             st.markdown("**🎬 YouTube Tutorials**")
                             for title, url in nu_resources.get("youtube", []):
                                 st.markdown(f"- [▶ {title}]({url})")
                         with nr_col2:
-                            st.markdown("**🔗 References & Docs**")
+                            st.markdown("**📖 Books & References**")
                             for title, url in nu_resources.get("references", []):
-                                st.markdown(f"- [🌐 {title}]({url})")
+                                st.markdown(f"- [📗 {title}]({url})")
 
                     st.divider()
             
