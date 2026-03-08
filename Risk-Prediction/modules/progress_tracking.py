@@ -16,6 +16,15 @@ CURRENT_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(CURRENT_MODULE_DIR, "..", "database", "student_success.db")
 
 def run_progress_tracking():
+    # =====================================================================
+    # 🔙 LOCAL NAVIGATION BUTTON
+    # =====================================================================
+    st.markdown('<div class="back-btn-container">', unsafe_allow_html=True)
+    if st.button("« Back to Suite Portal", key="risk_back_btn"):
+        st.session_state.current_view = 'MySuite'
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+
     st.markdown("# 📊 Advanced Student Intelligence Suite")
     st.caption("Deep Behavioral Diagnostics & Multidimensional Risk Mapping")
 

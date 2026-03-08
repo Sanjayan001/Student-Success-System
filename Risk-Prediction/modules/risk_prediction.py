@@ -627,6 +627,17 @@ def advanced_loophole_detection(data):
 # =====================================================================
 
 def run_risk_module():
+
+    # =====================================================================
+    # 🔙 LOCAL NAVIGATION BUTTON
+    # =====================================================================
+    st.markdown('<div class="back-btn-container">', unsafe_allow_html=True)
+    if st.button("« Back to Suite Portal", key="risk_back_btn"):
+        st.session_state.current_view = 'MySuite'
+        st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    
     st.markdown("## 🎓 Deep Clinical Risk Intelligence")
     st.caption("State-of-the-Art Neural Diagnostics | XAI Engine v5.0 (Counterfactual & Fairness Enabled)")
     
