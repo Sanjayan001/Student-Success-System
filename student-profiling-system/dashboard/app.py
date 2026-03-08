@@ -326,7 +326,7 @@ with tab3:
                 fig_radar = go.Figure()
                 fig_radar.add_trace(go.Scatterpolar(r=[row[f] for f in radar_features], theta=[f.replace("_Mean","") for f in radar_features], fill='toself', name=f'Student {sid}', line_color="#3B82F6"))
                 fig_radar.add_trace(go.Scatterpolar(r=gold_standard.tolist(), theta=[f.replace("_Mean","") for f in radar_features], fill='toself', name='Gold Standard', line_color="#F59E0B", opacity=0.6))
-                fig_radar.add_trace(go.Scatterpolar(r=[df_feat[f].mean() for f in radar_features], theta=[f.replace("_Mean","") for f in radar_features], fill='toself', name='Average', line_color="#94A3B8", opacity=0.2))
+                fig_radar.add_trace(go.Scatterpolar(r=[df_feat[f].mean() for f in radar_features], theta=[f.replace("_Mean","") for f in radar_features], fill='toself', name='Average', line_color="#000000", opacity=0.2))
                 fig_radar.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0, 5])), margin=dict(t=20, b=20, l=20, r=20), legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="center", x=0.5))
                 st.plotly_chart(fig_radar, use_container_width=True, theme="streamlit")
     
