@@ -308,12 +308,12 @@ if st.session_state.current_view == 'Lobby':
             navigate('Risk_Suite')
 
     with col2:
-        st.markdown('<div class="card"><div class="icon">📊</div><h2>Student Profiling</h2><p>Member B: Grading Trends and Enrollment Analysis</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><div class="icon">📊</div><h2>Student Profiling</h2><p>Students Bulk Analysis</p></div>', unsafe_allow_html=True)
         if st.button("Enter Profiling Suite", width="stretch"):
             navigate('Profiling_Suite') # Added navigation for Profiling
 
     with col3:
-        st.markdown('<div class="card"><div class="icon">🤝</div><h2>Course Recommendation</h2><p>Member C: Student Engagement and Wellbeing Indices</p></div>', unsafe_allow_html=True)
+        st.markdown('<div class="card"><div class="icon">🤝</div><h2>Course Recommendation</h2><p>Students Course Selection</p></div>', unsafe_allow_html=True)
         if st.button("Enter Course Rec Suite", width="stretch"):
             navigate('Course_Rec_Suite')
 
